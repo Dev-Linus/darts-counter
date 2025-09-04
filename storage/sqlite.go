@@ -3,6 +3,7 @@ package storage
 import (
 	"darts-counter/models"
 	"database/sql"
+	"errors"
 	"log"
 
 	"github.com/google/uuid"
@@ -20,34 +21,53 @@ func NewStorage(dbFile string) *Storage {
 	}
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS players (
-		id TEXT PRIMARY KEY,
+		pid TEXT PRIMARY KEY,
 		name TEXT,
-		matches INTEGER,
-		throws INTEGER,
-		totalScore INTEGER
+	);`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS player_stats (
+		pid TEXT PRIMARY KEY,
+		overallMatches INTEGER,
+		overallThrows INTEGER,
+		matchesWon INTEGER,
+		totalScore INTEGER,
 	);`)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS matches (
-		id TEXT PRIMARY KEY,
+		mid TEXT PRIMARY KEY,
+		isActive INTEGER,
 		startAt INTEGER,
 		startmode CHAR,
 		endmode CHAR,
+		currentPlayer TEXT,
 		currentThrow INTEGER,
-		currentScore INTEGER
+		wonBy TEXT,
 	);`)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS match_players (
-		matchId TEXT,
-		playerId TEXT,
-		throws INTEGER,
+		mid TEXT,
+		pid TEXT,
+		overallThrows INTEGER,
 		score INTEGER,
-		PRIMARY KEY (matchId, playerId)
+		PRIMARY KEY (mid, pid)
+	);`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS match_player_throws (
+		tid TEXT PRIMARY KEY,
+		mpid TEXT,
+		throwType INTEGER,
 	);`)
 	if err != nil {
 		log.Fatal(err)
@@ -108,7 +128,7 @@ func (s *Storage) GetPlayer(id string) (*models.Player, error) {
 }
 
 func (s *Storage) DeletePlayer(id string) error {
-	_, err := s.DB.Exec("DELETE FROM match_players WHERE playerId=?", id)
+	_, err := s.DB.Exec("DELETE FROM match_players WHERE pid=?", id)
 	if err != nil {
 		return err
 	}
@@ -128,7 +148,7 @@ func (s *Storage) CreateMatch(players []string, startAt int, startMode, endMode 
 		return nil, err
 	}
 	for _, pid := range players {
-		_, err := s.DB.Exec("INSERT INTO match_players (matchId, playerId, throws, score) VALUES (?, ?, ?, ?)", id, pid, 0, 0)
+		_, err := s.DB.Exec("INSERT INTO match_players (mid, pid, throws, score) VALUES (?, ?, ?, ?)", id, pid, 0, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +183,7 @@ func (s *Storage) GetMatches() ([]*models.Match, error) {
 		rows.Scan(&m.ID, &m.StartAt, &m.StartMode, &m.EndMode, &m.CurrentThrow, &m.CurrentScore)
 
 		m.Scores = make(map[string]int)
-		pRows, _ := s.DB.Query("SELECT playerId, score FROM match_players WHERE matchId=?", m.ID)
+		pRows, _ := s.DB.Query("SELECT pid, score FROM match_players WHERE mid=?", m.ID)
 		for pRows.Next() {
 			var pid string
 			var score int
@@ -179,7 +199,7 @@ func (s *Storage) GetMatches() ([]*models.Match, error) {
 }
 
 func (s *Storage) DeleteMatch(id string) error {
-	_, err := s.DB.Exec("DELETE FROM match_players WHERE matchId=?", id)
+	_, err := s.DB.Exec("DELETE FROM match_players WHERE mid=?", id)
 	if err != nil {
 		return err
 	}
@@ -187,16 +207,45 @@ func (s *Storage) DeleteMatch(id string) error {
 	return err
 }
 
+func (s *Storage) GetActiveMatch(mid string) (*models.Match, error) {
+	row := s.DB.QueryRow("SELECT * FROM matches WHERE mid=? AND isAcitve=1", mid)
+	if row == nil {
+		return nil, errors.New("row is nil")
+	}
+	match := &models.Match{}
+	err := row.Scan(match)
+	if err != nil {
+		return nil, err
+	}
+
+	return match, nil
+}
+
+// ---------- MATCH_PLAYER METHODS ----------
+func (s *Storage) GetMatchPlayerModel(mid, pid string) (*models.MatchPlayer, error) {
+	row := s.DB.QueryRow("SELECT * FROM match_players WHERE mid=? AND pid=?", mid, pid)
+	if row == nil {
+		return nil, errors.New("row is nil")
+	}
+	matchPlayer := &models.MatchPlayer{}
+	err := row.Scan(matchPlayer)
+	if err != nil {
+		return nil, err
+	}
+
+	return matchPlayer, nil
+}
+
 // ---------- GAMEPLAY ----------
 func (s *Storage) RecordThrow(matchID, playerID string, amount int) (map[string]int, int, error) {
-	// Update player stats
-	_, err := s.DB.Exec("UPDATE players SET totalScore=totalScore+?, throws=throws+1 WHERE id=?", amount, playerID)
+	// Update match player score
+	_, err := s.DB.Exec("UPDATE match_players SET score=score-?, throws=throws+1 WHERE mid=? AND pid=?", amount, matchID, playerID)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// Update match player score
-	_, err = s.DB.Exec("UPDATE match_players SET score=score+?, throws=throws+1 WHERE matchId=? AND playerId=?", amount, matchID, playerID)
+	// Update player stats
+	_, err = s.DB.Exec("UPDATE players SET totalScore=totalScore+?, throws=throws+1 WHERE id=?", amount, playerID)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -214,7 +263,7 @@ func (s *Storage) RecordThrow(matchID, playerID string, amount int) (map[string]
 	}
 
 	// Get updated scores
-	scoreRows, _ := s.DB.Query("SELECT playerId, score FROM match_players WHERE matchId=?", matchID)
+	scoreRows, _ := s.DB.Query("SELECT pid, score FROM match_players WHERE mid=?", matchID)
 	defer scoreRows.Close()
 	scores := make(map[string]int)
 	for scoreRows.Next() {

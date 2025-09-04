@@ -9,7 +9,11 @@ import (
 	"darts-counter/storage"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -29,6 +33,7 @@ type Api interface {
 	DeleteMatch(w http.ResponseWriter, r *http.Request)
 	PlayerThrow(w http.ResponseWriter, r *http.Request)
 	Statistics(w http.ResponseWriter, r *http.Request)
+	StreamFile(w http.ResponseWriter, r *http.Request)
 }
 
 func (i *Impl) CreatePlayer(w http.ResponseWriter, r *http.Request) {
@@ -150,7 +155,7 @@ func (s *Impl) DeleteMatch(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "match deleted"})
 }
 
-func (s *Impl) PlayerThrow(w http.ResponseWriter, r *http.Request) {
+func (i *Impl) PlayerThrow(w http.ResponseWriter, r *http.Request) {
 	req := &playerthrow.Request{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -172,7 +177,7 @@ func (s *Impl) PlayerThrow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := s.DartsService.PlayerThrow(req)
+	resp, err := i.DartsService.PlayerThrow(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -181,19 +186,51 @@ func (s *Impl) PlayerThrow(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-func (s *Impl) Statistics(w http.ResponseWriter, r *http.Request) {
+func (i *Impl) Statistics(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("playerId")
 	if err := uuid.Validate(id); err != nil {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	playerStats, err := s.DartsService.CollectStats(id)
+	playerStats, err := i.DartsService.CollectStats(id)
 	if err != nil {
 		http.Error(w, "player not found", http.StatusNotFound)
 		return
 	}
 
 	json.NewEncoder(w).Encode(playerStats)
+}
+
+func (i *Impl) StreamFile(w http.ResponseWriter, r *http.Request) {
+	file := r.URL.Query().Get("file")
+	if file == "" {
+		http.Error(w, "missing file parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Restrict serving to your assets directory
+	path := fmt.Sprintf("./assets/%s", file)
+
+	f, err := os.Open(path)
+	if err != nil {
+		http.Error(w, "file not found", http.StatusNotFound)
+		return
+	}
+	defer f.Close()
+
+	// Detect MIME type (basic by extension)
+	switch {
+	case strings.HasSuffix(file, ".mp4"):
+		w.Header().Set("Content-Type", "video/mp4")
+	case strings.HasSuffix(file, ".mp3"):
+		w.Header().Set("Content-Type", "audio/mpeg")
+	default:
+		// Fallback — browser will still try
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+
+	// Stream with range support (important for video/audio seeking)
+	http.ServeContent(w, r, file, time.Now(), f)
 }
 
 func NewApi(storage *storage.Storage, darts *darts.Service) (Api, error) {

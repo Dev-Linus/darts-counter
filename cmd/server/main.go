@@ -24,7 +24,7 @@ func enableCORS(next http.Handler) http.Handler {
 func main() {
 	store := storage.NewStorage("darts.db")
 	darts := darts.NewService(store)
-	svc, err := handler.NewApi(store, darts)
+	api, err := handler.NewApi(store, darts)
 	if err != nil {
 		log.Fatal("Api could be initialized")
 	}
@@ -32,21 +32,25 @@ func main() {
 	mux := http.NewServeMux()
 
 	// CRUD Player
-	mux.HandleFunc("/createPlayer", svc.CreatePlayer)
-	mux.HandleFunc("/updatePlayer", svc.UpdatePlayer)
-	mux.HandleFunc("/listPlayers", svc.ListPlayers)
-	mux.HandleFunc("/deletePlayer", svc.DeletePlayer)
+	mux.HandleFunc("/createPlayer", api.CreatePlayer)
+	mux.HandleFunc("/updatePlayer", api.UpdatePlayer)
+	mux.HandleFunc("/listPlayers", api.ListPlayers)
+	mux.HandleFunc("/deletePlayer", api.DeletePlayer)
 
 	// CRD Matches
-	mux.HandleFunc("/createMatch", svc.CreateMatch)
-	mux.HandleFunc("/listMatches", svc.ListMatches)
-	mux.HandleFunc("/deleteMatch", svc.DeleteMatch)
+	mux.HandleFunc("/createMatch", api.CreateMatch)
+	mux.HandleFunc("/listMatches", api.ListMatches)
+	mux.HandleFunc("/deleteMatch", api.DeleteMatch)
 
 	// gameplay
-	mux.HandleFunc("/playerThrow", svc.PlayerThrow)
+	mux.HandleFunc("/playerThrow", api.PlayerThrow)
 
 	// misc
-	mux.HandleFunc("/statistics", svc.Statistics)
+	mux.HandleFunc("/statistics", api.Statistics)
+	mux.HandleFunc("/settings", api.Settings)
+
+	// media streaming
+	mux.HandleFunc("/streamFile", api.StreamFile)
 
 	log.Println("Server started on :8080")
 	log.Fatal(http.ListenAndServe(":8080", enableCORS(mux)))
