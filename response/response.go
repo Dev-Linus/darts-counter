@@ -6,7 +6,7 @@ import (
 )
 
 type Builder interface {
-	BuildNextPlayerResponse(match *models.Match, currentPid string) *playerthrow.Response
+	BuildNextPlayerResponse(match *models.Match) *playerthrow.Response
 	BuildPersistPlayerThrowResponse(match *models.Match, currentPid string) *playerthrow.Response
 }
 
@@ -17,13 +17,12 @@ func NewBuilder() Builder {
 	return Impl{}
 }
 
-func (i Impl) BuildNextPlayerResponse(match *models.Match, currentPid string) *playerthrow.Response {
-	nextPid := match.GetNextPlayer()
+func (i Impl) BuildNextPlayerResponse(match *models.Match) *playerthrow.Response {
 	return &playerthrow.Response{
 		Won:            false,
-		NextThrowBy:    nextPid,
+		NextThrowBy:    match.CurrentPlayer,
 		Scores:         match.Scores,
-		PossibleFinish: getPossibleFinishForMatchPlayer(match, nextPid),
+		PossibleFinish: getPossibleFinishForMatchPlayer(match),
 	}
 }
 
@@ -31,8 +30,8 @@ func (i Impl) BuildPersistPlayerThrowResponse(match *models.Match, currentPid st
 	return nil
 }
 
-func getPossibleFinishForMatchPlayer(match *models.Match, pid string) []models.ThrowType {
-	playerScore := match.Scores[pid]
+func getPossibleFinishForMatchPlayer(match *models.Match) []models.ThrowType {
+	playerScore := match.Scores[match.CurrentPlayer]
 	throwsLeft := 3 - int(match.CurrentThrow)
 	endMode := models.MapNumberToIO(match.EndMode)
 	throws := float32(playerScore) / float32(60)

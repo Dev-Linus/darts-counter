@@ -45,11 +45,10 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 
 	if matchPlayerModel.Score == match.StartAt { // is IN
 		if !isValidIn(models.MapNumberToIO(match.StartMode), matchPlayerModel.Score, req.Throw) {
-			// not a valid start, should the player throw again?
-			// or is the turn over and its the next players turn?
-			// build not valid in response
+			// not a valid start, the turn over and its the next players turn
+			updatedMatch := s.persistTurnOver(match)
 
-			return s.Response.BuildNextPlayerResponse(match, pid), errors.New("no valid start throw")
+			return s.Response.BuildNextPlayerResponse(updatedMatch), errors.New("no valid start throw")
 		}
 
 		// persistThrow return error
@@ -172,6 +171,16 @@ func isOverthrow(match models.Match, score int, throw models.ThrowType) bool {
 		return potentialScore == 1 || (throwsLeft == 1 && potentialScore%3 != 0 && potentialScore%2 != 0)
 	}
 	return false
+}
+
+func (s Service) persistTurnOver(match *models.Match) *models.Match {
+	match.CurrentPlayer = match.GetNextPlayer()
+	match.CurrentThrow = 1
+	if err := s.Store.UpdateMatch(match); err != nil {
+		return nil
+	}
+
+	return match
 }
 
 /*func persistThrow() {

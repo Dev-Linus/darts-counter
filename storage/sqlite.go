@@ -197,6 +197,15 @@ func (s *Storage) GetMatches() ([]*models.Match, error) {
 	return matches, nil
 }
 
+func (s *Storage) UpdateMatch(match *models.Match) error {
+	_, err := s.DB.Exec("UPDATE matches SET currentPlayer=?, currentThrow=? WHERE mid=?", match.CurrentPlayer, match.CurrentThrow, match.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *Storage) DeleteMatch(id string) error {
 	_, err := s.DB.Exec("DELETE FROM match_players WHERE mid=?", id)
 	if err != nil {
