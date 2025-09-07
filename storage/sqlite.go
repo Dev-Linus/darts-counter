@@ -87,7 +87,7 @@ func (s *Storage) CreatePlayer(name string) (*models.Player, error) {
 		return nil, err
 	}
 
-	return &models.Player{ID: id, Name: name, Matches: 0, Throws: 0, TotalScore: 0}, nil
+	return &models.Player{ID: id, Name: name}, nil
 }
 
 func (s *Storage) UpdatePlayer(id string, name string) (*models.Player, error) {
@@ -109,7 +109,7 @@ func (s *Storage) GetPlayers() ([]*models.Player, error) {
 	var players []*models.Player
 	for rows.Next() {
 		var p models.Player
-		rows.Scan(&p.ID, &p.Name, &p.Matches, &p.Throws, &p.TotalScore)
+		rows.Scan(&p.ID, &p.Name)
 		players = append(players, &p)
 	}
 
@@ -119,7 +119,7 @@ func (s *Storage) GetPlayers() ([]*models.Player, error) {
 func (s *Storage) GetPlayer(id string) (*models.Player, error) {
 	row := s.DB.QueryRow("SELECT id, name, matches, throws, totalScore FROM players WHERE id=?", id)
 	var p models.Player
-	err := row.Scan(&p.ID, &p.Name, &p.Matches, &p.Throws, &p.TotalScore)
+	err := row.Scan(&p.ID, &p.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,6 @@ func (s *Storage) CreateMatch(players []string, startAt int, startMode, endMode 
 		StartAt:      startAt,
 		StartMode:    startMode,
 		EndMode:      endMode,
-		CurrentScore: startAt,
 		Scores:       make(map[string]int),
 	}
 	for _, pid := range players {
@@ -180,7 +179,7 @@ func (s *Storage) GetMatches() ([]*models.Match, error) {
 	var matches []*models.Match
 	for rows.Next() {
 		var m models.Match
-		rows.Scan(&m.ID, &m.StartAt, &m.StartMode, &m.EndMode, &m.CurrentThrow, &m.CurrentScore)
+		rows.Scan(&m.ID, &m.StartAt, &m.StartMode, &m.EndMode, &m.CurrentThrow)
 
 		m.Scores = make(map[string]int)
 		pRows, _ := s.DB.Query("SELECT pid, score FROM match_players WHERE mid=?", m.ID)

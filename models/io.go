@@ -33,3 +33,16 @@ func MapIOToNumber(io IO) uint8 {
 		return 0
 	}
 }
+
+func (io IO) GetAllFinishingThrows() []ThrowType {
+	switch io {
+	case Straight:
+		return GetAllThrowTypes(true, false, false)
+	case Double:
+		return GetAllThrowTypes(false, true, false)
+	case Master:
+		return GetAllThrowTypes(false, false, true)
+	default:
+		return nil
+	}
+}

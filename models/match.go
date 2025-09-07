@@ -10,3 +10,15 @@ type Match struct {
 	EndMode       uint8          `json:"endMode"`
 	Scores        map[string]int `json:"scores"`
 }
+
+func (m *Match) GetNextPlayer() string {
+	for i, pid := range m.Players {
+		if pid != m.CurrentPlayer {
+			continue
+		}
+
+		return m.Players[i+1%len(m.Players)]
+	}
+
+	return ""
+}

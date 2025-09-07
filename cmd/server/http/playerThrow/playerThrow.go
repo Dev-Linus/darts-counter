@@ -11,6 +11,6 @@ type Request struct {
 type Response struct {
 	Won            bool
 	NextThrowBy    string
-	Scores         map[string]uint32
-	PossibleFinish []*models.ThrowType
+	Scores         map[string]int
+	PossibleFinish []models.ThrowType
 }

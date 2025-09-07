@@ -1,5 +1,7 @@
 package models
 
+import "sort"
+
 // ThrowType is a type-safe enum of all possible throws
 type ThrowType int
 
@@ -100,13 +102,36 @@ var ThrowScores = map[ThrowType]int{
 }
 
 func (tt ThrowType) IsDouble() bool {
-	return tt > 20 && tt < 41
+	return (tt > 20 && tt < 41) || tt == 62
 }
 
 func (tt ThrowType) IsMaster() bool {
-	return tt > 20 && tt < 61
+	return (tt > 20 && tt < 61) || tt == 62
 }
 
 func (tt ThrowType) ToPoints() int {
 	return ThrowScores[tt]
+}
+
+func GetAllThrowTypes(isStraight, isDouble, isMaster bool) []ThrowType {
+	keys := make([]ThrowType, 0, len(ThrowScores))
+	for tt2 := range ThrowScores {
+		if isStraight || (isDouble && tt2.IsDouble()) || (isMaster && tt2.IsMaster()) {
+			keys = append(keys, tt2)
+		}
+	}
+
+	//sort by score
+	sort.Slice(keys, func(i, j int) bool {
+		scoreI := ThrowScores[keys[i]]
+		scoreJ := ThrowScores[keys[j]]
+
+		if scoreI == scoreJ {
+			// fallback to enum order (S1 < S2 < … < D1 < … < T1 < … < BULL)
+			return keys[i] < keys[j]
+		}
+		return scoreI > scoreJ
+	})
+
+	return keys
 }

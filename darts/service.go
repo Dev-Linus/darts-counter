@@ -6,15 +6,20 @@ import (
 	playerstats "darts-counter/cmd/server/http/playerStats"
 	playerthrow "darts-counter/cmd/server/http/playerThrow"
 	"darts-counter/models"
+	"darts-counter/response"
 	"darts-counter/storage"
 )
 
 type Service struct {
-	Store *storage.Storage
+	Store    *storage.Storage
+	Response response.Builder
 }
 
-func NewService(store *storage.Storage) *Service {
-	return &Service{Store: store}
+func NewService(store *storage.Storage, resposneBuilder response.Builder) *Service {
+	return &Service{
+		Store:    store,
+		Response: resposneBuilder,
+	}
 }
 
 func (s *Service) CollectStats(pid string) (*playerstats.Response, error) {
@@ -40,24 +45,24 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 
 	if matchPlayerModel.Score == match.StartAt { // is IN
 		if !isValidIn(models.MapNumberToIO(match.StartMode), matchPlayerModel.Score, req.Throw) {
-			// not a valid start, should the player throw again? or is the turn over and its the next players turn?
+			// not a valid start, should the player throw again?
+			// or is the turn over and its the next players turn?
 			// build not valid in response
-			return &playerthrow.Response{
-				Won: false,
-			}, errors.New("no valid start throw")
+
+			return s.Response.BuildNextPlayerResponse(match, pid), errors.New("no valid start throw")
 		}
 
 		// persistThrow return error
 		// build persist response
 
-		if err := persistThrow(match, matchPlayerModel, req); err != nil {
+		/*if err := persistThrow(match, matchPlayerModel, req); err != nil {
 			// db error
 		}
 
-		resp, err := buildPersistPlayerThrowResponse(match, matchPlayerModel, req)
+		resp, err := s.Response.BuildPersistPlayerThrowResponse(match, matchPlayerModel, req)
 		if err != nil {
 			// error
-		}
+		}*/
 
 		/*scores := s.Store.PersistThrow(mid, pid, req.Throw)
 		resp := &playerthrow.Response{
@@ -74,11 +79,9 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 		resp.NextThrowBy = pid
 		s.Store.UpdateThrowsThisTurn(mid, pid, matchPlayerModel.throwsThisTurn+1)
 		resp.PossibleFinish = computePossibleFinishForPlayer(pid)*/
-
-		return resp, nil
 	}
 
-	if matchPlayerModel.Score-req.Throw.ToPoints() == 0 { // is OUT
+	/*if matchPlayerModel.Score-req.Throw.ToPoints() == 0 { // is OUT
 		if !isValidOut(models.MapNumberToIO(match.EndMode), matchPlayerModel.Score, req.Throw) {
 			// build not valid out response
 			return &playerthrow.Response{
@@ -87,45 +90,45 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 		}
 
 		// valid finish, player has won the game
-		if err := persistThrow(match, matchPlayerModel, req); err != nil {
+		//if err := persistThrow(match, matchPlayerModel, req); err != nil {
 			// db error
-		}
+		//}
 		// add a win to the player stats
 		// deactivate the match
 		// compute scores
 
-		return buildPersistPlayerThrowResponse(match, matchPlayerModel, req)
-	}
+		return s.Response.BuildPersistPlayerThrowResponse(match, matchPlayerModel, req)
+	}*/
 
 	if isOverthrow(*match, matchPlayerModel.Score, req.Throw) { // not IN not OUT but OVERTHROW
 		// build overthrow response
-		scores := s.Store.GetScoresForMatch(mid)
+		/*scores := s.Store.GetScoresForMatch(mid)
 		return &playerthrow.Response{
 			Won:            false,
 			NextThrowBy:    match.NextPlayer(),
 			Scores:         scores,
 			PossibleFinish: computePossibleFinishForPlayer(match.NextPlayer()),
-		}, errors.New("overthrown, next players turn")
+		}, errors.New("overthrown, next players turn")*/
 	}
 
 	// not IN not OUT not OVERTHROW => normal throw
 	// persist normal throw
 	// build persist resposne
 
-	if err := persistThrow(match, matchPlayerModel, req); err != nil {
+	/*if err := persistThrow(match, matchPlayerModel, req); err != nil {
 		// db error
-	}
+	}*/
 
-	resp, err := buildPersistPlayerThrowResponse(match, matchPlayerModel, req)
+	/*resp, err := s.Response.BuildPersistPlayerThrowResponse(match, matchPlayerModel, req)
 	if err != nil {
 		// error
-	}
+	}*/
 
-	return resp, nil
+	return nil, nil
 }
 
-func isValidThrow(throw ThrowType) bool {
-	if _, ok := models.ThrowScores[trow]; !ok {
+func isValidThrow(throw models.ThrowType) bool {
+	if _, ok := models.ThrowScores[throw]; !ok {
 		return false
 	}
 
@@ -171,7 +174,7 @@ func isOverthrow(match models.Match, score int, throw models.ThrowType) bool {
 	return false
 }
 
-func persistThrow() {
+/*func persistThrow() {
 	scores := s.Store.PersistThrow(mid, pid, req.Throw)
 
 	resp := &playerthrow.Response{
@@ -190,8 +193,4 @@ func persistThrow() {
 	resp.PossibleFinish = computePossibleFinishForPlayer(pid)
 
 	return resp, nil
-}
-
-func buildPersistPlayerThrowResponse() {
-
-}
+}*/

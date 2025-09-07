@@ -3,6 +3,7 @@ package main
 import (
 	handler "darts-counter/cmd/server/http"
 	"darts-counter/darts"
+	"darts-counter/response"
 	"darts-counter/storage"
 	"log"
 	"net/http"
@@ -23,7 +24,8 @@ func enableCORS(next http.Handler) http.Handler {
 
 func main() {
 	store := storage.NewStorage("darts.db")
-	darts := darts.NewService(store)
+	resposneBuilder := response.NewBuilder()
+	darts := darts.NewService(store, resposneBuilder)
 	api, err := handler.NewApi(store, darts)
 	if err != nil {
 		log.Fatal("Api could be initialized")
@@ -47,7 +49,7 @@ func main() {
 
 	// misc
 	mux.HandleFunc("/statistics", api.Statistics)
-	mux.HandleFunc("/settings", api.Settings)
+	//mux.HandleFunc("/settings", api.Settings)
 
 	// media streaming
 	mux.HandleFunc("/streamFile", api.StreamFile)
