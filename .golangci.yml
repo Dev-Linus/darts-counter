@@ -7,7 +7,7 @@ run:
   modules-download-mode: readonly
 
 output:
-  formats: colored-line-number
+  format: colored-line-number
   print-issued-lines: true
   print-linter-name: true
 
@@ -173,17 +173,8 @@ linters-settings:
       - G404
     severity: medium
     confidence: medium
-  sloglint:
-    # accept standard log.Logger usage too
-    allow-methods: [ "Info", "Warn", "Error", "Debug", "Printf", "Println", "Print" ]
   nolintlint:
-    allow-leading-space: true
     allow-unused: false
     require-explanation: false
     require-specific: true
 
-# Optional headers; keep empty to not enforce
-headers:
-  patterns: [ ]
-
-version: 2
