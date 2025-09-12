@@ -48,7 +48,7 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 			// not a valid start, the turn over and its the next players turn
 			updatedMatch := s.persistTurnOver(match)
 
-			return s.Response.BuildNextPlayerResponse(updatedMatch), errors.New("no valid start throw")
+			return s.Response.BuildPlayerResponse(updatedMatch, false), errors.New("no valid start throw")
 		}
 
 		// persistThrow return error

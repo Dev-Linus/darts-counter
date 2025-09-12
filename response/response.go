@@ -6,8 +6,7 @@ import (
 )
 
 type Builder interface {
-	BuildNextPlayerResponse(match *models.Match) *playerthrow.Response
-	BuildPersistPlayerThrowResponse(match *models.Match, currentPid string) *playerthrow.Response
+	BuildPlayerResponse(match *models.Match, won bool) *playerthrow.Response
 }
 
 type Impl struct {
@@ -17,9 +16,9 @@ func NewBuilder() Builder {
 	return Impl{}
 }
 
-func (i Impl) BuildNextPlayerResponse(match *models.Match) *playerthrow.Response {
+func (i Impl) BuildPlayerResponse(match *models.Match, won bool) *playerthrow.Response {
 	return &playerthrow.Response{
-		Won:            false,
+		Won:            won,
 		NextThrowBy:    match.CurrentPlayer,
 		Scores:         match.Scores,
 		PossibleFinish: getPossibleFinishForMatchPlayer(match),
@@ -31,7 +30,10 @@ func (i Impl) BuildPersistPlayerThrowResponse(match *models.Match, currentPid st
 }
 
 func getPossibleFinishForMatchPlayer(match *models.Match) []models.ThrowType {
-	playerScore := match.Scores[match.CurrentPlayer]
+	playerScore, ok := match.Scores[match.CurrentPlayer]
+	if !ok {
+		return nil
+	}
 	throwsLeft := 3 - int(match.CurrentThrow)
 	endMode := models.MapNumberToIO(match.EndMode)
 	throws := float32(playerScore) / float32(60)
@@ -39,7 +41,7 @@ func getPossibleFinishForMatchPlayer(match *models.Match) []models.ThrowType {
 		return nil
 	}
 
-	bestFinish := make([]models.ThrowType, 0, throwsLeft+1)
+	bestFinish := make([]models.ThrowType, 0, throwsLeft)
 	possibleLastThrows := endMode.GetAllFinishingThrows()
 
 	for _, possibleThrow := range possibleLastThrows {
