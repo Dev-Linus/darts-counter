@@ -5,11 +5,12 @@ import (
 
 	playerstats "darts-counter/cmd/server/http/playerStats"
 	playerthrow "darts-counter/cmd/server/http/playerThrow"
-	"darts-counter/models"
-	"darts-counter/response"
-	"darts-counter/storage"
+	models "darts-counter/models"
+	response "darts-counter/response"
+	storage "darts-counter/storage"
 )
 
+// Service is the service for the darts business logic
 type Service struct {
 	Store    *storage.Storage
 	Response response.Builder

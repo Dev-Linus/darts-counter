@@ -5,9 +5,9 @@ import "sort"
 // ThrowType is a type-safe enum of all possible throws
 type ThrowType int
 
-//nolint:revive // Exported constants are intentionally named per darts nomenclature (S1..D20..T20..SBULL/BULL).
+//nolint:nolintlint,revive // Exported constants are intentionally named per darts nomenclature (S1..D20..T20..SBULL/BULL).
 const (
-	// Singles
+	// S1 Singles
 	S1 ThrowType = iota + 1
 	S2
 	S3
@@ -29,7 +29,7 @@ const (
 	S19
 	S20
 
-	// Doubles
+	// D1 Doubles
 	D1
 	D2
 	D3
@@ -51,7 +51,7 @@ const (
 	D19
 	D20
 
-	// Triples
+	// T1 Triples
 	T1
 	T2
 	T3
@@ -73,7 +73,7 @@ const (
 	T19
 	T20
 
-	// Bulls
+	// SBULL Bulls
 	SBULL
 	BULL
 )

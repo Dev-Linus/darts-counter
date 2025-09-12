@@ -235,7 +235,7 @@ func (s *Storage) GetMatches() ([]*models.Match, error) {
 			m.Players = append(m.Players, pid)
 			m.Scores[pid] = score
 		}
-		pRows.Close()
+		_ = pRows.Close()
 
 		matches = append(matches, &m)
 	}
@@ -333,7 +333,9 @@ func (s *Storage) RecordThrow(matchID, playerID string, amount int) (map[string]
 	if err != nil {
 		return nil, 0, err
 	}
-	defer scoreRows.Close()
+	defer func(scoreRows *sql.Rows) {
+		_ = scoreRows.Close()
+	}(scoreRows)
 	scores := make(map[string]int)
 	for scoreRows.Next() {
 		var pid string
@@ -352,7 +354,9 @@ func (s *Storage) getMatchByQuery(query string, args ...any) (*models.Match, err
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
 	if !rows.Next() {
 		return nil, sql.ErrNoRows
 	}
@@ -368,13 +372,13 @@ func (s *Storage) getMatchByQuery(query string, args ...any) (*models.Match, err
 	for pRows.Next() {
 		var pid string
 		var score int
-		if err := pRows.Scan(&pid, &score); err != nil {
-			pRows.Close()
+		if err = pRows.Scan(&pid, &score); err != nil {
+			_ = pRows.Close() //nolint:sqlclosecheck
 			return nil, err
 		}
 		m.Players = append(m.Players, pid)
 		m.Scores[pid] = score
 	}
-	pRows.Close()
+	_ = pRows.Close()
 	return &m, nil
 }
