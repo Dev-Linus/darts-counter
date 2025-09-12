@@ -15,6 +15,7 @@ type Storage struct {
 	DB *sql.DB
 }
 
+// NewStorage creates a new SQLite service
 func NewStorage(dbFile string) *Storage {
 	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
@@ -78,6 +79,8 @@ func NewStorage(dbFile string) *Storage {
 }
 
 // ---------- PLAYER METHODS ----------
+
+// CreatePlayer inserts a player to the player table
 func (s *Storage) CreatePlayer(name string) (*models.Player, error) {
 	id := uuid.New().String()
 	_, err := s.DB.Exec(
@@ -93,6 +96,7 @@ func (s *Storage) CreatePlayer(name string) (*models.Player, error) {
 	return &models.Player{ID: id, Name: name}, nil
 }
 
+// UpdatePlayer updates a player from the player table
 func (s *Storage) UpdatePlayer(id string, name string) (*models.Player, error) {
 	_, err := s.DB.Exec("UPDATE players SET name=? WHERE id=?", name, id)
 	if err != nil {
