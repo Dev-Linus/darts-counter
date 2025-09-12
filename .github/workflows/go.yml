@@ -1,4 +1,4 @@
-name: Go
+name: Go CI/CD
 
 on:
   push:
@@ -7,26 +7,49 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-test-deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout the code
       - uses: actions/checkout@v4
 
+      # Setup Go
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.23.1'
 
-      # ✅ Run golangci-lint
+      # Lint using golangci-lint
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
           args: --timeout=5m
 
+      # Build
       - name: Build
         run: go build -v ./...
 
+      # Test
       - name: Test
         run: go test -v ./...
+
+      # Deploy to server (via SSH)
+      - name: Deploy to Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "./your-binary-name"
+          target: "/var/www/your-app-dir"
+
+      - name: Restart App (SSH)
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            systemctl --user restart your-app.service
