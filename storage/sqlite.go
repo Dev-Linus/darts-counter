@@ -118,7 +118,12 @@ func (s *Storage) GetPlayers() ([]*models.Player, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err = rows.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(rows)
 
 	var players []*models.Player
 	for rows.Next() {
@@ -198,7 +203,12 @@ func (s *Storage) GetMatches() ([]*models.Match, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err = rows.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(rows)
 
 	var matches []*models.Match
 	for rows.Next() {
@@ -215,8 +225,11 @@ func (s *Storage) GetMatches() ([]*models.Match, error) {
 		for pRows.Next() {
 			var pid string
 			var score int
-			if err := pRows.Scan(&pid, &score); err != nil {
-				pRows.Close()
+			if err = pRows.Scan(&pid, &score); err != nil {
+				err = pRows.Close()
+				if err != nil {
+					return nil, err
+				}
 				return nil, err
 			}
 			m.Players = append(m.Players, pid)

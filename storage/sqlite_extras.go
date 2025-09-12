@@ -31,6 +31,7 @@ func (s *Storage) GetPlayerStats(pid string) (*models.PlayerStats, error) {
 	return ps, nil
 }
 
+// GetAllPlayerStats
 func (s *Storage) GetAllPlayerStats() ([]*models.PlayerStats, error) {
 	rows, err := s.DB.Query("SELECT pid, matches, throws, totalScore FROM player_stats")
 	if err != nil {
