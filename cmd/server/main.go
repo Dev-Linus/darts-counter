@@ -14,7 +14,7 @@ func enableCORS(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		if r.Method == "OPTIONS" {
+		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -24,9 +24,9 @@ func enableCORS(next http.Handler) http.Handler {
 
 func main() {
 	store := storage.NewStorage("darts.db")
-	resposneBuilder := response.NewBuilder()
-	darts := darts.NewService(store, resposneBuilder)
-	api, err := handler.NewApi(store, darts)
+	responseBuilder := response.NewBuilder()
+	service := darts.NewService(store, responseBuilder)
+	api, err := handler.NewApi(store, service)
 	if err != nil {
 		log.Fatal("Api could be initialized")
 	}
@@ -49,7 +49,7 @@ func main() {
 
 	// misc
 	mux.HandleFunc("/statistics", api.Statistics)
-	//mux.HandleFunc("/settings", api.Settings)
+	// mux.HandleFunc("/settings", api.Settings)
 
 	// media streaming
 	mux.HandleFunc("/streamFile", api.StreamFile)

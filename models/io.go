@@ -1,13 +1,18 @@
 package models
 
+// IO represents the in/out mode for starting or finishing a match (Straight, Double, Master).
 type IO int
 
 const (
+	// Straight allows any throw for in/out.
 	Straight IO = iota + 1
+	// Double requires doubles for in/out.
 	Double
+	// Master requires doubles or triples for in/out.
 	Master
 )
 
+// MapNumberToIO maps a numeric code to its corresponding IO enum value.
 func MapNumberToIO(integer uint8) IO {
 	switch integer {
 	case 0:
@@ -21,6 +26,7 @@ func MapNumberToIO(integer uint8) IO {
 	}
 }
 
+// MapIOToNumber maps an IO enum value to its numeric code.
 func MapIOToNumber(io IO) uint8 {
 	switch io {
 	case Straight:
@@ -34,6 +40,7 @@ func MapIOToNumber(io IO) uint8 {
 	}
 }
 
+// GetAllFinishingThrows returns the allowed last-throw types for the given IO mode.
 func (io IO) GetAllFinishingThrows() []ThrowType {
 	switch io {
 	case Straight:

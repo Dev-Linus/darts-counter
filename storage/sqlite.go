@@ -249,35 +249,7 @@ func (s *Storage) GetAllMatches() ([]*models.Match, error) {
 
 // GetMatch returns a single match by id
 func (s *Storage) GetMatch(id string) (*models.Match, error) {
-	rows, err := s.DB.Query("SELECT id, startAt, startmode, endmode, currentThrow, currentPlayer FROM matches WHERE id=?", id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	if !rows.Next() {
-		return nil, sql.ErrNoRows
-	}
-	var m models.Match
-	if err := rows.Scan(&m.ID, &m.StartAt, &m.StartMode, &m.EndMode, &m.CurrentThrow, &m.CurrentPlayer); err != nil {
-		return nil, err
-	}
-	m.Scores = make(map[string]int)
-	pRows, err := s.DB.Query("SELECT pid, score FROM match_players WHERE mid=?", m.ID)
-	if err != nil {
-		return nil, err
-	}
-	for pRows.Next() {
-		var pid string
-		var score int
-		if err := pRows.Scan(&pid, &score); err != nil {
-			pRows.Close()
-			return nil, err
-		}
-		m.Players = append(m.Players, pid)
-		m.Scores[pid] = score
-	}
-	pRows.Close()
-	return &m, nil
+	return s.getMatchByQuery("SELECT id, startAt, startmode, endmode, currentThrow, currentPlayer FROM matches WHERE id=?", id)
 }
 
 func (s *Storage) UpdateMatch(match *models.Match) error {
@@ -314,35 +286,7 @@ func (s *Storage) DeleteMatch(id string) error {
 }
 
 func (s *Storage) GetActiveMatch(mid string) (*models.Match, error) {
-	rows, err := s.DB.Query("SELECT id, startAt, startmode, endmode, currentThrow, currentPlayer FROM matches WHERE id=? AND isActive=1", mid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	if !rows.Next() {
-		return nil, sql.ErrNoRows
-	}
-	var m models.Match
-	if err := rows.Scan(&m.ID, &m.StartAt, &m.StartMode, &m.EndMode, &m.CurrentThrow, &m.CurrentPlayer); err != nil {
-		return nil, err
-	}
-	m.Scores = make(map[string]int)
-	pRows, err := s.DB.Query("SELECT pid, score FROM match_players WHERE mid=?", m.ID)
-	if err != nil {
-		return nil, err
-	}
-	for pRows.Next() {
-		var pid string
-		var score int
-		if err := pRows.Scan(&pid, &score); err != nil {
-			pRows.Close()
-			return nil, err
-		}
-		m.Players = append(m.Players, pid)
-		m.Scores[pid] = score
-	}
-	pRows.Close()
-	return &m, nil
+	return s.getMatchByQuery("SELECT id, startAt, startmode, endmode, currentThrow, currentPlayer FROM matches WHERE id=? AND isActive=1", mid)
 }
 
 // ---------- MATCH_PLAYER METHODS ----------
@@ -400,4 +344,37 @@ func (s *Storage) RecordThrow(matchID, playerID string, amount int) (map[string]
 		scores[pid] = score
 	}
 	return scores, nextThrow, nil
+}
+
+// getMatchByQuery fetches a single match using the provided query and populates players and scores.
+func (s *Storage) getMatchByQuery(query string, args ...any) (*models.Match, error) {
+	rows, err := s.DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		return nil, sql.ErrNoRows
+	}
+	var m models.Match
+	if err := rows.Scan(&m.ID, &m.StartAt, &m.StartMode, &m.EndMode, &m.CurrentThrow, &m.CurrentPlayer); err != nil {
+		return nil, err
+	}
+	m.Scores = make(map[string]int)
+	pRows, err := s.DB.Query("SELECT pid, score FROM match_players WHERE mid= ?", m.ID)
+	if err != nil {
+		return nil, err
+	}
+	for pRows.Next() {
+		var pid string
+		var score int
+		if err := pRows.Scan(&pid, &score); err != nil {
+			pRows.Close()
+			return nil, err
+		}
+		m.Players = append(m.Players, pid)
+		m.Scores[pid] = score
+	}
+	pRows.Close()
+	return &m, nil
 }

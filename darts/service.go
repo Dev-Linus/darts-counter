@@ -45,39 +45,18 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 
 	if matchPlayerModel.Score == match.StartAt { // is IN
 		if !isValidIn(models.MapNumberToIO(match.StartMode), matchPlayerModel.Score, req.Throw) {
-			// not a valid start, the turn over and its the next players turn
+			// not a valid start, the turn is over, and it's the next players turn
 			updatedMatch := s.persistTurnOver(match)
 
-			return s.Response.BuildPlayerResponse(updatedMatch, false), errors.New("no valid start throw")
+			return s.Response.BuildPlayerThrowResponse(updatedMatch, false), errors.New("no valid start throw")
 		}
 
 		// persistThrow return error
 		// build persist response
 
-		/*if err := persistThrow(match, matchPlayerModel, req); err != nil {
-			// db error
+		if err = persistThrow(*match, *matchPlayerModel, req); err != nil {
+			// TODO: handle persistence error
 		}
-
-		resp, err := s.Response.BuildPersistPlayerThrowResponse(match, matchPlayerModel, req)
-		if err != nil {
-			// error
-		}*/
-
-		/*scores := s.Store.PersistThrow(mid, pid, req.Throw)
-		resp := &playerthrow.Response{
-			Won:    false,
-			Scores: scores,
-		}
-
-		if match.CurrentThrow >= 2 {
-			resp.NextThrowBy = match.NextPlayer()
-			resp.PossibleFinish = computePossibleFinishForPlayer(match.NextPlayer())
-			s.Store.UpdateThrowsThisTurn(mid, pid, 0)
-		}
-
-		resp.NextThrowBy = pid
-		s.Store.UpdateThrowsThisTurn(mid, pid, matchPlayerModel.throwsThisTurn+1)
-		resp.PossibleFinish = computePossibleFinishForPlayer(pid)*/
 	}
 
 	/*if matchPlayerModel.Score-req.Throw.ToPoints() == 0 { // is OUT
@@ -98,17 +77,6 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 
 		return s.Response.BuildPersistPlayerThrowResponse(match, matchPlayerModel, req)
 	}*/
-
-	if isOverthrow(*match, matchPlayerModel.Score, req.Throw) { // not IN not OUT but OVERTHROW
-		// build overthrow response
-		/*scores := s.Store.GetScoresForMatch(mid)
-		return &playerthrow.Response{
-			Won:            false,
-			NextThrowBy:    match.NextPlayer(),
-			Scores:         scores,
-			PossibleFinish: computePossibleFinishForPlayer(match.NextPlayer()),
-		}, errors.New("overthrown, next players turn")*/
-	}
 
 	// not IN not OUT not OVERTHROW => normal throw
 	// persist normal throw
@@ -173,9 +141,9 @@ func isOverthrow(match models.Match, score int, throw models.ThrowType) bool {
 	return false
 }
 
-func (s Service) persistTurnOver(match *models.Match) *models.Match {
+func (s *Service) persistTurnOver(match *models.Match) *models.Match {
 	match.CurrentPlayer = match.GetNextPlayer()
-	match.CurrentThrow = 1
+	match.CurrentThrow = 0
 	if err := s.Store.UpdateMatch(match); err != nil {
 		return nil
 	}
@@ -183,23 +151,11 @@ func (s Service) persistTurnOver(match *models.Match) *models.Match {
 	return match
 }
 
-/*func persistThrow() {
-	scores := s.Store.PersistThrow(mid, pid, req.Throw)
-
-	resp := &playerthrow.Response{
-		Won:    false,
-		Scores: scores,
-	}
-
-	if matchPlayerModel.throwsThisTurn >= 2 {
-		resp.NextThrowBy = match.NextPlayer()
-		resp.PossibleFinish = computePossibleFinishForPlayer(match.NextPlayer())
-		s.Store.UpdateThrowsThisTurn(mid, pid, 0)
-	}
-
-	resp.NextThrowBy = pid
-	s.Store.UpdateThrowsThisTurn(mid, pid, matchPlayerModel.throwsThisTurn+1)
-	resp.PossibleFinish = computePossibleFinishForPlayer(pid)
-
-	return resp, nil
-}*/
+func persistThrow(match models.Match, matchPlayerModel models.MatchPlayer, req *playerthrow.Request) error {
+	// TODO: implement persistence for throw updates (scores, turns, stats).
+	// Use blank identifiers to avoid unused parameter lints until implemented.
+	_ = match
+	_ = matchPlayerModel
+	_ = req
+	return nil
+}

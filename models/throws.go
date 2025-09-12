@@ -5,6 +5,7 @@ import "sort"
 // ThrowType is a type-safe enum of all possible throws
 type ThrowType int
 
+//nolint:revive // Exported constants are intentionally named per darts nomenclature (S1..D20..T20..SBULL/BULL).
 const (
 	// Singles
 	S1 ThrowType = iota + 1
@@ -77,6 +78,7 @@ const (
 	BULL
 )
 
+// ThrowScores maps each ThrowType to its points value.
 var ThrowScores = map[ThrowType]int{
 	// Singles
 	S1: 1, S2: 2, S3: 3, S4: 4, S5: 5,
@@ -101,18 +103,22 @@ var ThrowScores = map[ThrowType]int{
 	BULL:  50,
 }
 
+// IsDouble returns whether the ThrowType is a possible "double"-out
 func (tt ThrowType) IsDouble() bool {
 	return (tt > 20 && tt < 41) || tt == 62
 }
 
+// IsMaster returns whether the ThrowType is a possible "master"-out
 func (tt ThrowType) IsMaster() bool {
 	return (tt > 20 && tt < 61) || tt == 62
 }
 
+// ToPoints returns the point amount of the ThrowType
 func (tt ThrowType) ToPoints() int {
 	return ThrowScores[tt]
 }
 
+// GetAllThrowTypes returns all ThrowTypes for the given flags
 func GetAllThrowTypes(isStraight, isDouble, isMaster bool) []ThrowType {
 	keys := make([]ThrowType, 0, len(ThrowScores))
 	for tt2 := range ThrowScores {
@@ -121,7 +127,7 @@ func GetAllThrowTypes(isStraight, isDouble, isMaster bool) []ThrowType {
 		}
 	}
 
-	//sort by score
+	// sort by score
 	sort.Slice(keys, func(i, j int) bool {
 		scoreI := ThrowScores[keys[i]]
 		scoreJ := ThrowScores[keys[j]]

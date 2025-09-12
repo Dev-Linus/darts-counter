@@ -5,28 +5,27 @@ import (
 	"darts-counter/models"
 )
 
+// Builder is a builder for response models.
 type Builder interface {
-	BuildPlayerResponse(match *models.Match, won bool) *playerthrow.Response
+	BuildPlayerThrowResponse(match *models.Match, won bool) *playerthrow.Response
 }
 
-type Impl struct {
-}
+// Impl implements the Builder interface.
+type Impl struct{}
 
+// NewBuilder returns a new response Builder implementation.
 func NewBuilder() Builder {
 	return Impl{}
 }
 
-func (i Impl) BuildPlayerResponse(match *models.Match, won bool) *playerthrow.Response {
+// BuildPlayerThrowResponse creates a playerthrow.Response from a given match and won flag.
+func (i Impl) BuildPlayerThrowResponse(match *models.Match, won bool) *playerthrow.Response {
 	return &playerthrow.Response{
 		Won:            won,
 		NextThrowBy:    match.CurrentPlayer,
 		Scores:         match.Scores,
 		PossibleFinish: getPossibleFinishForMatchPlayer(match),
 	}
-}
-
-func (i Impl) BuildPersistPlayerThrowResponse(match *models.Match, currentPid string) *playerthrow.Response {
-	return nil
 }
 
 func getPossibleFinishForMatchPlayer(match *models.Match) []models.ThrowType {

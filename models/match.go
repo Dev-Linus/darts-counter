@@ -1,5 +1,6 @@
 package models
 
+// Match represents a darts match state.
 type Match struct {
 	ID            string         `json:"id"`
 	Players       []string       `json:"players"`
@@ -11,13 +12,14 @@ type Match struct {
 	Scores        map[string]int `json:"scores"`
 }
 
+// GetNextPlayer returns the next player's ID in the rotation.
 func (m *Match) GetNextPlayer() string {
 	for i, pid := range m.Players {
 		if pid != m.CurrentPlayer {
 			continue
 		}
 
-		return m.Players[i+1%len(m.Players)]
+		return m.Players[(i+1)%len(m.Players)]
 	}
 
 	return ""
