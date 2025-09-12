@@ -1,19 +1,189 @@
-version: "2"
+# golangci-lint configuration for darts-counter
+# Docs: https://golangci-lint.run/usage/configuration/
+
+run:
+  timeout: 5m
+  go: "1.23"
+  modules-download-mode: readonly
+
+output:
+  formats: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+issues:
+  exclude-dirs:
+    - darts-fe
+    - node_modules
+    - vendor
+    - .git
+  # Skip generated code patterns
+  exclude-files:
+    - '^.*_generated\.go$'
+    - '^.*zz_generated.*\.go$'
+    - '^.*mock_.*\.go$'
+    - '^.*\.pb\.go$'
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-use-default: false
+  exclude-rules:
+    # Allow long lines in test files
+    - path: _test\.go
+      linters: [ lll ]
+    # Allow cyclomatic complexity a bit higher in tests and tiny handlers
+    - path: _test\.go|cmd/server/http/.+
+      linters: [ gocyclo, cyclop ]
+    # Do not require exhaustive errors wrapping in tests
+    - path: _test\.go
+      linters: [ errorlint ]
+    # Common false positives in gosec for tests and sqlite file paths
+    - path: _test\.go|storage/sqlite\.go
+      linters: [ gosec ]
+    # Allow TODOs in code without forcing style linters to fail
+    - linters: [ revive ]
+      text: "(TODO|FIXME)"
+
 linters:
   enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - gosimple
+    - typecheck
+    - ineffassign
+    - unused
     - revive
-  exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
-formatters:
-  enable:
-    - gofmt
-  exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
+    - gofumpt
+    - goimports
+    - gocritic
+    - gosec
+    - goconst
+    - misspell
+    - unconvert
+    - unparam
+    - prealloc
+    - whitespace
+    - nakedret
+    - dogsled
+    - lll
+    - dupl
+    - stylecheck
+    - containedctx
+    - forbidigo
+    - errorlint
+    - tenv
+    - nolintlint
+    - makezero
+    - decorder
+    - bidichk
+    - bodyclose
+    - durationcheck
+    - exhaustive
+    - copyloopvar
+    - grouper
+    - goheader
+    - loggercheck
+    - sloglint
+    - nilerr
+    - nilnil
+    - nosprintfhostport
+    - predeclared
+    - reassign
+    - sqlclosecheck
+    - tparallel
+    - thelper
+    - usestdlibvars
+    - wastedassign
+    - zerologlint
+    - asasalint
+    - cyclop
+  disable:
+    # Often too noisy or duplicates others; can be enabled later if needed
+    - funlen
+    - wsl
+    - gochecknoglobals
+    - gochecknoinits
+    - depguard
+
+linters-settings:
+  goimports:
+    local-prefixes: darts-counter
+  gofumpt:
+    extra-rules: true
+  misspell:
+    locale: US
+  lll:
+    line-length: 140
+    tab-width: 4
+  goconst:
+    min-len: 2
+    min-occurrences: 3
+  revive:
+    severity: warning
+    confidence: 0.8
+    rules:
+      - name: atomic
+      - name: banned-characters
+      - name: blank-imports
+      - name: bool-literal-in-expr
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: defer
+      - name: dot-imports
+      - name: duplicated-imports
+      - name: early-return
+      - name: empty-lines
+      - name: error-return
+      - name: error-strings
+      - name: errorf
+      - name: exported
+        arguments: [ "checkPrivateReceivers" ]
+      - name: if-return
+      - name: import-shadowing
+      - name: increment-decrement
+      - name: indent-error-flow
+      - name: line-length-limit
+        arguments: [ 140 ]
+      - name: optimize-operands-order
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: redefines-builtin-id
+      - name: time-naming
+      - name: unexported-naming
+      - name: unexported-return
+      - name: unreachable-code
+      - name: unused-parameter
+      - name: useless-break
+      - name: var-naming
+      - name: var-declaration
+  cyclop:
+    max-complexity: 14
+    package-average: 10.0
+  dupl:
+    threshold: 140
+  nakedret:
+    max-func-lines: 30
+  errorlint:
+    errorf: true
+    asserts: true
+  gosec:
+    excludes:
+      # G404: Weak random number generator not used here; can ignore globally
+      - G404
+    severity: medium
+    confidence: medium
+  sloglint:
+    # accept standard log.Logger usage too
+    allow-methods: [ "Info", "Warn", "Error", "Debug", "Printf", "Println", "Print" ]
+  nolintlint:
+    allow-leading-space: true
+    allow-unused: false
+    require-explanation: false
+    require-specific: true
+
+# Optional headers; keep empty to not enforce
+headers:
+  patterns: [ ]
+
+version: 2

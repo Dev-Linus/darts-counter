@@ -1,32 +1,60 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
-# Binaries for programs and plugins
+# OS-specific
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Go build artifacts
+bin/
+build/
+dist/
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
 *.test
-
-# Code coverage profiles and other test artifacts
 *.out
-coverage.*
+
+# Go coverage and reports
+coverage/
+coverage.out
 *.coverprofile
-profile.cov
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Go workspace file
-go.work
-go.work.sum
+# Node/Vite frontend outputs (keep lockfiles tracked)
+darts-fe/node_modules/
+darts-fe/dist/
+darts-fe/.vite/
+darts-fe/.eslintcache
+# Keep lockfiles
+!darts-fe/package-lock.json
+!darts-fe/pnpm-lock.yaml
+!darts-fe/yarn.lock
 
-# env file
+# Environment files
 .env
+.env.*
+!.env.example
 
-# Editor/IDE
-# .idea/
-# .vscode/
+# Caches and temporary files
+.cache/
+.tmp/
+tmp/
+
+# Databases and local data
+*.db
+*.sqlite
+*.sqlite3

@@ -16,7 +16,7 @@ jobs:
 
       # Setup Go
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: '1.23.1'
 
@@ -24,29 +24,63 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
-          args: --timeout=5m
+          version: v1.60.3
+          args: --timeout=5m --config=.golangci.yml
+          working-directory: .
 
-      # Build
+      # Build backend
       - name: Build Linux binary
         run: |
-          GOOS=linux GOARCH=amd64 go build -o darts-counter ./...
+          mkdir -p bin
+          GOOS=linux GOARCH=amd64 go build -o bin/darts-counter ./cmd/server
 
-      # Test
+      # Test backend
       - name: Test
         run: go test -v ./...
 
-      # Deploy to server (via SSH)
-      - name: Deploy to Server
+      # Setup Node for frontend build
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: 'darts-fe/package-lock.json'
+
+      # Install frontend dependencies
+      - name: Install frontend deps
+        working-directory: darts-fe
+        run: npm ci
+
+      # Build frontend
+      - name: Build frontend
+        working-directory: darts-fe
+        run: npm run build
+
+      # Deploy backend to server (via SSH)
+      - name: Deploy backend binary
+        if: ${{ secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_KEY != '' }}
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          source: "./your-binary-name"
+          source: "bin/darts-counter"
           target: "/var/www/your-app-dir"
 
+      # Deploy frontend build to server
+      - name: Deploy frontend dist
+        if: ${{ secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_KEY != '' }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "darts-fe/dist/*"
+          target: "/var/www/your-app-dir/dist"
+          strip_components: 0
+
       - name: Restart App (SSH)
+        if: ${{ secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_KEY != '' }}
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.SSH_HOST }}
