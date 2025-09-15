@@ -14,6 +14,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// Storage wraps a Bun DB for interacting with SQLite-backed persistence.
 type Storage struct {
 	Bun *bun.DB
 }
@@ -58,7 +59,10 @@ func (s *Storage) CreatePlayer(name string) (*models.Player, error) {
 	}
 	// initialize stats row via Bun (insert ignore)
 	ps := &playerStatsRow{Pid: p.ID}
-	_, _ = s.Bun.NewInsert().Model(ps).On("CONFLICT (pid) DO NOTHING").Exec(ctx)
+	if _, err := s.Bun.NewInsert().Model(ps).On("CONFLICT (pid) DO NOTHING").Exec(ctx); err != nil {
+		// Not fatal: stats row will be created on-demand later.
+		log.Printf("warning: init player_stats for %s failed: %v", p.ID, err)
+	}
 	return p, nil
 }
 
@@ -86,6 +90,7 @@ func (s *Storage) UpdatePlayerModel(p *models.Player) (*models.Player, error) {
 	return s.GetPlayer(p.ID)
 }
 
+// GetPlayers returns all players.
 func (s *Storage) GetPlayers() ([]*models.Player, error) {
 	ctx := context.Background()
 	var list []models.Player
@@ -105,6 +110,7 @@ func (s *Storage) GetAllPlayers() ([]*models.Player, error) {
 	return s.GetPlayers()
 }
 
+// GetPlayer returns a player by ID.
 func (s *Storage) GetPlayer(id string) (*models.Player, error) {
 	ctx := context.Background()
 	var p models.Player
@@ -114,22 +120,30 @@ func (s *Storage) GetPlayer(id string) (*models.Player, error) {
 	return &p, nil
 }
 
+// DeletePlayer removes a player and related data by player ID.
 func (s *Storage) DeletePlayer(id string) error {
 	ctx := context.Background()
-	_, _ = s.Bun.NewDelete().TableExpr("match_player_throws").Where("pid = ?", id).Exec(ctx)
+	if _, err := s.Bun.NewDelete().TableExpr("match_player_throws").Where("pid = ?", id).Exec(ctx); err != nil {
+		// Non-fatal: continue cleanup
+		log.Printf("warning: cleanup match_player_throws for %s failed: %v", id, err)
+	}
 	if _, err := s.Bun.NewDelete().TableExpr("match_players").Where("pid = ?", id).Exec(ctx); err != nil {
 		return err
 	}
-	_, _ = s.Bun.NewDelete().TableExpr("player_stats").Where("pid = ?", id).Exec(ctx)
+	if _, err := s.Bun.NewDelete().TableExpr("player_stats").Where("pid = ?", id).Exec(ctx); err != nil {
+		// Non-fatal: continue
+		log.Printf("warning: cleanup player_stats for %s failed: %v", id, err)
+	}
 	_, err := s.Bun.NewDelete().TableExpr("players").Where("id = ?", id).Exec(ctx)
 	return err
 }
 
 // ---------- MATCH METHODS ----------
+// CreateMatch creates a new match with the given players and settings.
 func (s *Storage) CreateMatch(players []string, startAt int, startMode, endMode uint8) (*models.Match, error) {
 	ctx := context.Background()
 	id := uuid.New().String()
-	mr := &matchRow{ID: id, IsActive: true, StartAt: startAt, Startmode: startMode, Endmode: endMode, CurrentPlayer: "", CurrentThrow: 0}
+	mr := &matchRow{ID: id, IsActive: true, StartAt: startAt, Startmode: startMode, Endmode: endMode, CurrentPlayer: players[0], CurrentThrow: 0}
 	if _, err := s.Bun.NewInsert().Model(mr).Exec(ctx); err != nil {
 		return nil, err
 	}
@@ -154,6 +168,7 @@ func (s *Storage) CreateMatch(players []string, startAt int, startMode, endMode 
 	return m, nil
 }
 
+// GetMatches returns all matches with their players and scores.
 func (s *Storage) GetMatches() ([]*models.Match, error) {
 	ctx := context.Background()
 	var mrows []matchRow
@@ -218,6 +233,7 @@ func (s *Storage) GetMatch(id string) (*models.Match, error) {
 	return m, nil
 }
 
+// UpdateMatch persists the mutable fields of a match.
 func (s *Storage) UpdateMatch(match *models.Match) error {
 	ctx := context.Background()
 	_, err := s.Bun.NewUpdate().TableExpr("matches").
@@ -246,10 +262,13 @@ func (s *Storage) UpdateMatchModel(m *models.Match) (*models.Match, error) {
 	return s.GetMatch(m.ID)
 }
 
+// DeleteMatch removes a match and its associated rows by match ID.
 func (s *Storage) DeleteMatch(id string) error {
 	ctx := context.Background()
 	// remove throws for this match
-	_, _ = s.Bun.NewDelete().TableExpr("match_player_throws").Where("mid = ?", id).Exec(ctx)
+	if _, err := s.Bun.NewDelete().TableExpr("match_player_throws").Where("mid = ?", id).Exec(ctx); err != nil {
+		log.Printf("warning: cleanup match_player_throws for mid %s failed: %v", id, err)
+	}
 	// remove match_players entries
 	if _, err := s.Bun.NewDelete().TableExpr("match_players").Where("mid = ?", id).Exec(ctx); err != nil {
 		return err
@@ -259,6 +278,7 @@ func (s *Storage) DeleteMatch(id string) error {
 	return err
 }
 
+// GetActiveMatch returns the active match by ID or an error if not active or not found.
 func (s *Storage) GetActiveMatch(mid string) (*models.Match, error) {
 	ctx := context.Background()
 	var mr matchRow
@@ -289,6 +309,7 @@ func (s *Storage) GetActiveMatch(mid string) (*models.Match, error) {
 }
 
 // ---------- MATCH_PLAYER METHODS ----------
+// GetMatchPlayerModel returns the match-player row for a given match and player.
 func (s *Storage) GetMatchPlayerModel(mid, pid string) (*models.MatchPlayer, error) {
 	ctx := context.Background()
 	var mpr matchPlayerRow
@@ -299,6 +320,7 @@ func (s *Storage) GetMatchPlayerModel(mid, pid string) (*models.MatchPlayer, err
 }
 
 // ---------- GAMEPLAY ----------
+// RecordThrow updates throw statistics and returns updated scores and the next throw index.
 func (s *Storage) RecordThrow(matchID, playerID string, amount int) (map[string]int, int, error) {
 	ctx := context.Background()
 	// Update match player score and overall throws
@@ -334,6 +356,19 @@ func (s *Storage) RecordThrow(matchID, playerID string, amount int) (map[string]
 		scores[mp.Pid] = mp.Score
 	}
 	return scores, nextThrow, nil
+}
+
+// WonMatch marks a match as finished and stores the winner.
+func (s *Storage) WonMatch(match *models.Match) error {
+	ctx := context.Background()
+	if _, err := s.Bun.NewUpdate().TableExpr("matches").
+		Set("isActive = ?", false).
+		Set("wonBy = ?", match.CurrentPlayer).
+		Where("mid = ?", match.ID).Exec(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ---- Bun table models (internal) ----

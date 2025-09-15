@@ -35,14 +35,14 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Node/Vite frontend outputs (keep lockfiles tracked)
-darts-fe/node_modules/
-darts-fe/dist/
-darts-fe/.vite/
-darts-fe/.eslintcache
+dartsService-fe/node_modules/
+dartsService-fe/dist/
+dartsService-fe/.vite/
+dartsService-fe/.eslintcache
 # Keep lockfiles
-!darts-fe/package-lock.json
-!darts-fe/pnpm-lock.yaml
-!darts-fe/yarn.lock
+!dartsService-fe/package-lock.json
+!dartsService-fe/pnpm-lock.yaml
+!dartsService-fe/yarn.lock
 
 # Environment files
 .env

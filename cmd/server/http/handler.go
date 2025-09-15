@@ -16,8 +16,8 @@ import (
 	createplayer "darts-counter/cmd/server/http/createPlayer"
 	playerthrow "darts-counter/cmd/server/http/playerThrow"
 	updateplayer "darts-counter/cmd/server/http/updatePlayer"
-	"darts-counter/darts"
-	"darts-counter/storage"
+	darts "darts-counter/darts"
+	storage "darts-counter/storage"
 )
 
 // Impl provides HTTP handlers for the darts-counter API.
@@ -73,8 +73,7 @@ func (i *Impl) UpdatePlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := uuid.Validate(req.ID); err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+	if !validUUID(w, req.ID) {
 		return
 	}
 
@@ -91,11 +90,18 @@ func (i *Impl) UpdatePlayer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func validUUID(w http.ResponseWriter, id string) bool {
+	if err := uuid.Validate(id); err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return false
+	}
+	return true
+}
+
 // DeletePlayer deletes a player by ID.
 func (i *Impl) DeletePlayer(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("playerId")
-	if err := uuid.Validate(id); err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+	if !validUUID(w, id) {
 		return
 	}
 
@@ -276,13 +282,13 @@ func (i *Impl) StreamFile(w http.ResponseWriter, r *http.Request) {
 }
 
 // NewApi constructs the HTTP API implementation.
-func NewApi(storage *storage.Storage, darts *darts.Service) (Api, error) {
-	if storage == nil || darts == nil {
-		return nil, errors.New("storage or darts service is nil")
+func NewApi(db *storage.Storage, dartsService *darts.Service) (Api, error) {
+	if db == nil || dartsService == nil {
+		return nil, errors.New("db or dartsService service is nil")
 	}
 
 	return &Impl{
-		Store:        storage,
-		DartsService: darts,
+		Store:        db,
+		DartsService: dartsService,
 	}, nil
 }

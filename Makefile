@@ -14,7 +14,7 @@ $(BIN_DIR):
 	@mkdir -p $(BIN_DIR)
 
 build: $(BIN_DIR)
-	go build -o $(BUILD_OUT) ./cmd/server
+	GOTOOLCHAIN=go1.25.0+auto go build -o $(BUILD_OUT) ./cmd/server
 	@echo "Built $(BUILD_OUT)"
 
 # Run all Go tests
@@ -22,12 +22,12 @@ build: $(BIN_DIR)
 # Frontend directory is ignored automatically by Go tooling
 
 test:
-	go test $(PKG) -cover
+	GOTOOLCHAIN=go1.25.0+auto go test $(PKG) -cover
 
-# Lint using golangci-lint (configured via .golangci.yml)
-# Install with: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOBIN) v1.60.3
+# Lint using golangci-lint (configured via .golangci-lint.yml)
+# Install with: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOBIN) v1.62.0
 lint:
-	golangci-lint run
+	GOTOOLCHAIN=go1.25.0+auto go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.0 run -c .golangci-lint.yml
 
 clean:
 	rm -rf $(BIN_DIR)

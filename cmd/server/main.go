@@ -1,12 +1,13 @@
 package main
 
 import (
+	"log"
+	"net/http"
+
 	handler "darts-counter/cmd/server/http"
 	"darts-counter/darts"
 	"darts-counter/response"
 	"darts-counter/storage"
-	"log"
-	"net/http"
 )
 
 func enableCORS(next http.Handler) http.Handler {
