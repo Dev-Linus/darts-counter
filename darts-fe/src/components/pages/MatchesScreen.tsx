@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ApiClient } from "../../lib/api";
 import { useMatches } from "../../hooks/useMatches";
 import type { Player } from "../../types";
+import { THROW_TYPE_OPTIONS } from "../../lib/utils";
 
 export default function MatchesScreen({
   api,
@@ -18,21 +19,25 @@ export default function MatchesScreen({
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name || id;
 
   const [scoreBy, setScoreBy] = useState<
-    Record<string, { playerId: string; amount: number }>
+    Record<string, { playerId: string; throw?: number }>
   >({});
 
   const submit = async (mid: string) => {
     const sb = scoreBy[mid];
     if (!sb || !sb.playerId) return;
+    const throwType = sb.throw;
+    if (!throwType) {
+      throw new Error("Bitte Wurf auswählen");
+    }
     await api.call("/playerThrow", {
       method: "POST",
       body: JSON.stringify({
-        matchId: mid,
-        playerId: sb.playerId,
-        amount: Number(sb.amount || 0)
+        Mid: mid,
+        Pid: sb.playerId,
+        Throw: throwType
       })
     });
-    setScoreBy((m) => ({ ...m, [mid]: { playerId: sb.playerId, amount: 0 } }));
+    setScoreBy((m) => ({ ...m, [mid]: { playerId: sb.playerId } }));
     refresh();
   };
 
@@ -91,21 +96,26 @@ export default function MatchesScreen({
                   </option>
                 ))}
               </select>
-              <input
-                type="number"
-                placeholder="Punkte"
-                className="w-28 px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700"
-                value={scoreBy[m.id]?.amount ?? ""}
+              <select
+                className="bg-zinc-800 rounded-xl px-3 py-2"
+                value={scoreBy[m.id]?.throw ?? ""}
                 onChange={(e) =>
                   setScoreBy((s) => ({
                     ...s,
                     [m.id]: {
                       playerId: s[m.id]?.playerId || "",
-                      amount: Number(e.target.value)
+                      throw: e.target.value ? Number(e.target.value) : undefined
                     }
                   }))
                 }
-              />
+              >
+                <option value="">Wurf wählen…</option>
+                {THROW_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
               <button
                 onClick={() => submit(m.id)}
                 className="px-3 py-2 rounded-xl bg-green-700 hover:bg-green-700/90"

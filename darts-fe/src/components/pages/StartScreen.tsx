@@ -42,7 +42,7 @@ export default function StartScreen({
     if (chosen.length === 0) throw new Error("Bitte Spieler auswählen");
     await api.call<Match>("/createMatch", {
       method: "POST",
-      body: JSON.stringify({ players: chosen, startAt, startMode, endMode })
+      body: JSON.stringify({ Pids: chosen, StartAt: startAt, StartMode: startMode, EndMode: endMode })
     });
     await matchesState.refresh();
   };

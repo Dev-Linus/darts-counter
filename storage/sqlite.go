@@ -53,8 +53,8 @@ func NewStorage(dbFile string) *Storage {
 // CreatePlayer inserts a player using Bun ORM
 func (s *Storage) CreatePlayer(name string) (*models.Player, error) {
 	ctx := context.Background()
-	p := &models.Player{ID: uuid.New().String(), Name: name}
-	if _, err := s.Bun.NewInsert().Model(p).TableExpr("players").Exec(ctx); err != nil {
+	p := &playerRow{ID: uuid.New().String(), Name: name}
+	if _, err := s.Bun.NewInsert().Model(p).Exec(ctx); err != nil {
 		return nil, err
 	}
 	// initialize stats row via Bun (insert ignore)
@@ -63,14 +63,14 @@ func (s *Storage) CreatePlayer(name string) (*models.Player, error) {
 		// Not fatal: stats row will be created on-demand later.
 		log.Printf("warning: init player_stats for %s failed: %v", p.ID, err)
 	}
-	return p, nil
+	return &models.Player{ID: p.ID, Name: p.Name}, nil
 }
 
 // UpdatePlayer updates a player (Bun) and returns the updated record
 func (s *Storage) UpdatePlayer(id string, name string) (*models.Player, error) {
 	ctx := context.Background()
 	// Update using Bun
-	_, err := s.Bun.NewUpdate().TableExpr("players").Set("name = ?", name).Where("id = ?", id).Exec(ctx)
+	_, err := s.Bun.NewUpdate().Table("players").Set("name = ?", name).Where("id = ?", id).Exec(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (s *Storage) UpdatePlayerModel(p *models.Player) (*models.Player, error) {
 		return nil, errors.New("invalid player model")
 	}
 	ctx := context.Background()
-	_, err := s.Bun.NewUpdate().TableExpr("players").Set("name = ?", p.Name).Where("id = ?", p.ID).Exec(ctx)
+	_, err := s.Bun.NewUpdate().Table("players").Set("name = ?", p.Name).Where("id = ?", p.ID).Exec(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (s *Storage) UpdatePlayerModel(p *models.Player) (*models.Player, error) {
 func (s *Storage) GetPlayers() ([]*models.Player, error) {
 	ctx := context.Background()
 	var list []models.Player
-	if err := s.Bun.NewSelect().TableExpr("players").Column("id", "name").Scan(ctx, &list); err != nil {
+	if err := s.Bun.NewSelect().Table("players").Column("id", "name").Scan(ctx, &list); err != nil {
 		return nil, err
 	}
 	players := make([]*models.Player, 0, len(list))
@@ -114,7 +114,7 @@ func (s *Storage) GetAllPlayers() ([]*models.Player, error) {
 func (s *Storage) GetPlayer(id string) (*models.Player, error) {
 	ctx := context.Background()
 	var p models.Player
-	if err := s.Bun.NewSelect().TableExpr("players").Column("id", "name").Where("id = ?", id).Scan(ctx, &p); err != nil {
+	if err := s.Bun.NewSelect().Table("players").Column("id", "name").Where("id = ?", id).Scan(ctx, &p); err != nil {
 		return nil, err
 	}
 	return &p, nil
@@ -123,22 +123,21 @@ func (s *Storage) GetPlayer(id string) (*models.Player, error) {
 // DeletePlayer removes a player and related data by player ID.
 func (s *Storage) DeletePlayer(id string) error {
 	ctx := context.Background()
-	if _, err := s.Bun.NewDelete().TableExpr("match_player_throws").Where("pid = ?", id).Exec(ctx); err != nil {
+	if _, err := s.Bun.NewDelete().Table("match_player_throws").Where("pid = ?", id).Exec(ctx); err != nil {
 		// Non-fatal: continue cleanup
 		log.Printf("warning: cleanup match_player_throws for %s failed: %v", id, err)
 	}
-	if _, err := s.Bun.NewDelete().TableExpr("match_players").Where("pid = ?", id).Exec(ctx); err != nil {
+	if _, err := s.Bun.NewDelete().Table("match_players").Where("pid = ?", id).Exec(ctx); err != nil {
 		return err
 	}
-	if _, err := s.Bun.NewDelete().TableExpr("player_stats").Where("pid = ?", id).Exec(ctx); err != nil {
+	if _, err := s.Bun.NewDelete().Table("player_stats").Where("pid = ?", id).Exec(ctx); err != nil {
 		// Non-fatal: continue
 		log.Printf("warning: cleanup player_stats for %s failed: %v", id, err)
 	}
-	_, err := s.Bun.NewDelete().TableExpr("players").Where("id = ?", id).Exec(ctx)
+	_, err := s.Bun.NewDelete().Table("players").Where("id = ?", id).Exec(ctx)
 	return err
 }
 
-// ---------- MATCH METHODS ----------
 // CreateMatch creates a new match with the given players and settings.
 func (s *Storage) CreateMatch(players []string, startAt int, startMode, endMode uint8) (*models.Match, error) {
 	ctx := context.Background()
@@ -236,7 +235,7 @@ func (s *Storage) GetMatch(id string) (*models.Match, error) {
 // UpdateMatch persists the mutable fields of a match.
 func (s *Storage) UpdateMatch(match *models.Match) error {
 	ctx := context.Background()
-	_, err := s.Bun.NewUpdate().TableExpr("matches").
+	_, err := s.Bun.NewUpdate().Table("matches").
 		Set("currentPlayer = ?", match.CurrentPlayer).
 		Set("currentThrow = ?", match.CurrentThrow).
 		Where("id = ?", match.ID).Exec(ctx)
@@ -249,7 +248,7 @@ func (s *Storage) UpdateMatchModel(m *models.Match) (*models.Match, error) {
 		return nil, errors.New("invalid match model")
 	}
 	ctx := context.Background()
-	_, err := s.Bun.NewUpdate().TableExpr("matches").
+	_, err := s.Bun.NewUpdate().Table("matches").
 		Set("currentPlayer = ?", m.CurrentPlayer).
 		Set("currentThrow = ?", m.CurrentThrow).
 		Set("startAt = ?", m.StartAt).
@@ -266,15 +265,15 @@ func (s *Storage) UpdateMatchModel(m *models.Match) (*models.Match, error) {
 func (s *Storage) DeleteMatch(id string) error {
 	ctx := context.Background()
 	// remove throws for this match
-	if _, err := s.Bun.NewDelete().TableExpr("match_player_throws").Where("mid = ?", id).Exec(ctx); err != nil {
+	if _, err := s.Bun.NewDelete().Table("match_player_throws").Where("mid = ?", id).Exec(ctx); err != nil {
 		log.Printf("warning: cleanup match_player_throws for mid %s failed: %v", id, err)
 	}
 	// remove match_players entries
-	if _, err := s.Bun.NewDelete().TableExpr("match_players").Where("mid = ?", id).Exec(ctx); err != nil {
+	if _, err := s.Bun.NewDelete().Table("match_players").Where("mid = ?", id).Exec(ctx); err != nil {
 		return err
 	}
 	// remove match
-	_, err := s.Bun.NewDelete().TableExpr("matches").Where("id = ?", id).Exec(ctx)
+	_, err := s.Bun.NewDelete().Table("matches").Where("id = ?", id).Exec(ctx)
 	return err
 }
 
@@ -319,52 +318,13 @@ func (s *Storage) GetMatchPlayerModel(mid, pid string) (*models.MatchPlayer, err
 	return &models.MatchPlayer{Mid: mpr.Mid, Pid: mpr.Pid, OverallThrows: mpr.OverallThrows, Score: mpr.Score}, nil
 }
 
-// ---------- GAMEPLAY ----------
-// RecordThrow updates throw statistics and returns updated scores and the next throw index.
-func (s *Storage) RecordThrow(matchID, playerID string, amount int) (map[string]int, int, error) {
-	ctx := context.Background()
-	// Update match player score and overall throws
-	if _, err := s.Bun.NewUpdate().TableExpr("match_players").
-		Set("score = score - ?", amount).
-		Set("overallThrows = overallThrows + 1").
-		Where("mid = ?", matchID).Where("pid = ?", playerID).Exec(ctx); err != nil {
-		return nil, 0, err
-	}
-	// Update player stats
-	if _, err := s.Bun.NewUpdate().TableExpr("player_stats").
-		Set("totalScore = totalScore + ?", amount).
-		Set("throws = throws + 1").
-		Where("pid = ?", playerID).Exec(ctx); err != nil {
-		return nil, 0, err
-	}
-	// Update match current throw
-	var currentThrow int
-	if err := s.Bun.NewSelect().TableExpr("matches").Column("currentThrow").Where("id = ?", matchID).Scan(ctx, &currentThrow); err != nil {
-		return nil, 0, err
-	}
-	nextThrow := currentThrow + 1
-	if _, err := s.Bun.NewUpdate().TableExpr("matches").Set("currentThrow = ?", nextThrow).Where("id = ?", matchID).Exec(ctx); err != nil {
-		return nil, 0, err
-	}
-	// Get updated scores
-	var mps []matchPlayerRow
-	if err := s.Bun.NewSelect().Model(&mps).Column("pid", "score").Where("mid = ?", matchID).Scan(ctx); err != nil {
-		return nil, 0, err
-	}
-	scores := make(map[string]int)
-	for _, mp := range mps {
-		scores[mp.Pid] = mp.Score
-	}
-	return scores, nextThrow, nil
-}
-
 // WonMatch marks a match as finished and stores the winner.
 func (s *Storage) WonMatch(match *models.Match) error {
 	ctx := context.Background()
-	if _, err := s.Bun.NewUpdate().TableExpr("matches").
+	if _, err := s.Bun.NewUpdate().Table("matches").
 		Set("isActive = ?", false).
 		Set("wonBy = ?", match.CurrentPlayer).
-		Where("mid = ?", match.ID).Exec(ctx); err != nil {
+		Where("id = ?", match.ID).Exec(ctx); err != nil {
 		return err
 	}
 
