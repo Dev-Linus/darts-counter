@@ -6,7 +6,7 @@ BIN_DIR := bin
 BUILD_OUT := $(BIN_DIR)/$(APP_NAME)
 PKG := ./...
 
-.PHONY: all build test lint clean
+.PHONY: all build test lint fmt clean
 
 all: build
 
@@ -28,6 +28,10 @@ test:
 # Install with: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOBIN) v1.62.0
 lint:
 	GOTOOLCHAIN=go1.25.0+auto go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.0 run -c .golangci-lint.yml
+
+# Format code with standard gofmt (matches linter)
+fmt:
+	gofmt -s -w .
 
 clean:
 	rm -rf $(BIN_DIR)

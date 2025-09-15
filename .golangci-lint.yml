@@ -6,7 +6,7 @@ linters:
   enable:
     - govet
     - staticcheck
-    - gofumpt
+    - gofmt
     - ineffassign
     - errcheck
     - unused

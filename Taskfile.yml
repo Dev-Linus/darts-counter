@@ -26,3 +26,8 @@ tasks:
     desc: Run golangci-lint with repository configuration
     cmds:
       - GOTOOLCHAIN=go1.25.0+auto go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.0 run -c .golangci-lint.yml
+
+  fmt:
+    desc: Format code with standard gofmt (same as linter)
+    cmds:
+      - gofmt -s -w .
