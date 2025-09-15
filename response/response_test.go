@@ -1,8 +1,9 @@
 package response
 
 import (
-	"darts-counter/models"
 	"testing"
+
+	"darts-counter/models"
 )
 
 // helper to create a match with scores

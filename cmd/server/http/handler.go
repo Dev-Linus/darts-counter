@@ -1,28 +1,32 @@
 package handler
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+
 	creatematch "darts-counter/cmd/server/http/createMatch"
 	createplayer "darts-counter/cmd/server/http/createPlayer"
 	playerthrow "darts-counter/cmd/server/http/playerThrow"
 	updateplayer "darts-counter/cmd/server/http/updatePlayer"
 	"darts-counter/darts"
 	"darts-counter/storage"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"net/http"
-	"os"
-	"strings"
-	"time"
-
-	"github.com/google/uuid"
 )
 
+// Impl provides HTTP handlers for the darts-counter API.
 type Impl struct {
 	Store        *storage.Storage
 	DartsService *darts.Service
 }
 
+// Api defines the HTTP API surface.
 type Api interface {
 	CreatePlayer(w http.ResponseWriter, r *http.Request)
 	UpdatePlayer(w http.ResponseWriter, r *http.Request)
@@ -36,6 +40,7 @@ type Api interface {
 	StreamFile(w http.ResponseWriter, r *http.Request)
 }
 
+// CreatePlayer creates a new player.
 func (i *Impl) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 	req := &createplayer.Request{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Name) < 1 {
@@ -49,9 +54,13 @@ func (i *Impl) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(p)
+	if err := json.NewEncoder(w).Encode(p); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
+// UpdatePlayer updates an existing player.
 func (i *Impl) UpdatePlayer(w http.ResponseWriter, r *http.Request) {
 	req := &updateplayer.Request{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -76,9 +85,13 @@ func (i *Impl) UpdatePlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(p)
+	if err := json.NewEncoder(w).Encode(p); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
+// DeletePlayer deletes a player by ID.
 func (i *Impl) DeletePlayer(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("playerId")
 	if err := uuid.Validate(id); err != nil {
@@ -91,18 +104,26 @@ func (i *Impl) DeletePlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{"status": "player deleted"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "player deleted"}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
-func (i *Impl) ListPlayers(w http.ResponseWriter, r *http.Request) {
+// ListPlayers lists all players.
+func (i *Impl) ListPlayers(w http.ResponseWriter, _ *http.Request) {
 	players, err := i.Store.GetPlayers()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(players)
+	if err := json.NewEncoder(w).Encode(players); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
+// CreateMatch creates a new match.
 func (i *Impl) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	req := &creatematch.Request{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -128,10 +149,14 @@ func (i *Impl) CreateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(m)
+	if err := json.NewEncoder(w).Encode(m); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
-func (i *Impl) ListMatches(w http.ResponseWriter, r *http.Request) {
+// ListMatches lists all matches.
+func (i *Impl) ListMatches(w http.ResponseWriter, _ *http.Request) {
 	matches, err := i.Store.GetMatches()
 
 	if err != nil {
@@ -139,22 +164,30 @@ func (i *Impl) ListMatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(matches)
+	if err := json.NewEncoder(w).Encode(matches); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
-func (s *Impl) DeleteMatch(w http.ResponseWriter, r *http.Request) {
+// DeleteMatch deletes a match by ID.
+func (i *Impl) DeleteMatch(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("matchId")
 	if err := uuid.Validate(id); err != nil {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	if err := s.Store.DeleteMatch(id); err != nil {
+	if err := i.Store.DeleteMatch(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]string{"status": "match deleted"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "match deleted"}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
+// PlayerThrow records a player's throw within a match.
 func (i *Impl) PlayerThrow(w http.ResponseWriter, r *http.Request) {
 	req := &playerthrow.Request{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -183,9 +216,13 @@ func (i *Impl) PlayerThrow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
+// Statistics returns aggregated statistics for a player.
 func (i *Impl) Statistics(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("playerId")
 	if err := uuid.Validate(id); err != nil {
@@ -198,9 +235,13 @@ func (i *Impl) Statistics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(playerStats)
+	if err := json.NewEncoder(w).Encode(playerStats); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
+// StreamFile streams a file from the assets directory with basic content type handling.
 func (i *Impl) StreamFile(w http.ResponseWriter, r *http.Request) {
 	file := r.URL.Query().Get("file")
 	if file == "" {
@@ -208,21 +249,22 @@ func (i *Impl) StreamFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Restrict serving to your assets directory
-	path := fmt.Sprintf("./assets/%s", file)
+	// Restrict serving to the assets directory and prevent path traversal.
+	base := filepath.Base(file)
+	path := fmt.Sprintf("./assets/%s", base)
 
 	f, err := os.Open(path)
 	if err != nil {
 		http.Error(w, "file not found", http.StatusNotFound)
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// Detect MIME type (basic by extension)
 	switch {
-	case strings.HasSuffix(file, ".mp4"):
+	case strings.HasSuffix(base, ".mp4"):
 		w.Header().Set("Content-Type", "video/mp4")
-	case strings.HasSuffix(file, ".mp3"):
+	case strings.HasSuffix(base, ".mp3"):
 		w.Header().Set("Content-Type", "audio/mpeg")
 	default:
 		// Fallback — browser will still try
@@ -230,9 +272,10 @@ func (i *Impl) StreamFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Stream with range support (important for video/audio seeking)
-	http.ServeContent(w, r, file, time.Now(), f)
+	http.ServeContent(w, r, base, time.Now(), f)
 }
 
+// NewApi constructs the HTTP API implementation.
 func NewApi(storage *storage.Storage, darts *darts.Service) (Api, error) {
 	if storage == nil || darts == nil {
 		return nil, errors.New("storage or darts service is nil")

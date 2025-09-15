@@ -10,12 +10,13 @@ import (
 	storage "darts-counter/storage"
 )
 
-// Service is the service for the darts business logic
+// Service is the service for the darts business logic.
 type Service struct {
 	Store    *storage.Storage
 	Response response.Builder
 }
 
+// NewService creates a new darts Service.
 func NewService(store *storage.Storage, resposneBuilder response.Builder) *Service {
 	return &Service{
 		Store:    store,
@@ -23,7 +24,7 @@ func NewService(store *storage.Storage, resposneBuilder response.Builder) *Servi
 	}
 }
 
-func (s *Service) CollectStats(pid string) (*playerstats.Response, error) {
+func (s *Service) CollectStats(_ string) (*playerstats.Response, error) {
 	return nil, errors.New("error")
 }
 
@@ -56,7 +57,7 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 		// build persist response
 
 		if err = persistThrow(*match, *matchPlayerModel, req); err != nil {
-			// TODO: handle persistence error
+			return nil, err
 		}
 	}
 
@@ -92,7 +93,7 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 		// error
 	}*/
 
-	return nil, nil
+	return nil, errors.New("not implemented")
 }
 
 func isValidThrow(throw models.ThrowType) bool {
@@ -115,7 +116,7 @@ func isValidIn(startMode models.IO, score int, throw models.ThrowType) bool {
 	return false
 }
 
-func isValidOut(endMode models.IO, score int, throw models.ThrowType) bool {
+func isValidOut(endMode models.IO, _ int, throw models.ThrowType) bool {
 	switch endMode {
 	case models.Straight:
 		return true
@@ -127,7 +128,8 @@ func isValidOut(endMode models.IO, score int, throw models.ThrowType) bool {
 	return false
 }
 
-func isOverthrow(match models.Match, score int, throw models.ThrowType) bool {
+// helper kept for future use in overthrow detection logic
+func isOverthrow(match models.Match, score int, throw models.ThrowType) bool { //nolint:unused
 	throwsLeft := 3 - match.CurrentThrow
 	endMode := models.MapNumberToIO(match.EndMode)
 	potentialScore := score - throw.ToPoints()
