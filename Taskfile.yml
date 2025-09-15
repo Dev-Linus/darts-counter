@@ -15,17 +15,17 @@ tasks:
     desc: Build the Go server into bin/darts-counter
     cmds:
       - mkdir -p {{.BIN_DIR}}
-      - GOTOOLCHAIN=go1.25.0+auto go build -o {{.BUILD_OUT}} ./cmd/server
+      - GOTOOLCHAIN=go1.24.0+auto go build -o {{.BUILD_OUT}} ./cmd/server
 
   test:
     desc: Run all Go tests with coverage
     cmds:
-      - GOTOOLCHAIN=go1.25.0+auto go test ./... -cover
+      - GOTOOLCHAIN=go1.24.0+auto go test ./... -cover
 
   lint:
     desc: Run golangci-lint with repository configuration
     cmds:
-      - GOTOOLCHAIN=go1.25.0+auto go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.0 run -c .golangci-lint.yml
+      - GOTOOLCHAIN=go1.24.0+auto go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.0 run -c .golangci-lint.yml
 
   fmt:
     desc: Format code with standard gofmt (same as linter)
