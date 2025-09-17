@@ -76,10 +76,11 @@ export default function Dartboard({
         const start = -90 + idx * sectorAngle;
         const end = start + sectorAngle;
 
-        // Colors to match the reference: beige singles, green triples, red doubles
-        const singleFill = "#e7e3c6"; // beige
-        const tripleFill = "#1f8a3a"; // green
-        const doubleFill = "#c81e1e"; // red
+        // Colors: beige singles; triples/doubles alternate red/green by sector
+        const alternate = idx % 2 === 0; // alternate around the board
+          const singleFill = alternate ? "#1a1a1a" : "#e7e3c6"; // black/beige
+          const tripleFill = alternate ? "#c81e1e" : "#1f8a3a"; // red/green alternating
+          const doubleFill = alternate ? "#c81e1e" : "#1f8a3a"; // red/green alternating
 
         const paths = [
           {
