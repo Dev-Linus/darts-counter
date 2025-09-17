@@ -10,7 +10,7 @@ export default function PlayScreen({
   matches,
   matchId,
   onClose,
-  onRefreshMatches,
+  onRefreshMatches
 }: {
   api: ApiClient;
   players: Player[];
@@ -26,15 +26,15 @@ export default function PlayScreen({
 
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name || id;
 
-  // Local mirror to react instantly after throws
   const [scores, setScores] = useState<Record<string, number>>(
     matchFromList?.scores || {}
   );
   const [currentPid, setCurrentPid] = useState<string | undefined>(
     matchFromList?.currentPlayer
   );
-  const [turnThrows, setTurnThrows] = useState<number[]>([]); // store ThrowType values for this turn (max 3)
+  const [turnThrows, setTurnThrows] = useState<number[]>([]);
   const [finishes, setFinishes] = useState<number[]>([]);
+  const [useBoardView, setUseBoardView] = useState(false); // <-- NEW toggle
 
   useEffect(() => {
     if (matchFromList) {
@@ -53,29 +53,27 @@ export default function PlayScreen({
       PossibleFinish: number[];
     }>("/playerThrow", {
       method: "POST",
-      body: JSON.stringify({ Mid: matchId, Pid: currentPid, Throw: tt }),
+      body: JSON.stringify({ Mid: matchId, Pid: currentPid, Throw: tt })
     });
 
     setScores(resp.Scores || scores);
     setFinishes(resp.PossibleFinish || []);
 
-    // update turn throws; if next player changed, reset
     if (resp.NextThrowBy !== currentPid) {
       setTurnThrows([tt]);
     } else {
-      setTurnThrows((prev) => {
-        return [...prev, tt].slice(-3);
-      });
+      setTurnThrows((prev) => [...prev, tt].slice(-3));
     }
 
     setCurrentPid(resp.NextThrowBy);
-    // also refresh outer match list to keep consistent
     onRefreshMatches();
   };
 
   const finishLabels = finishes
-    .map((v) => THROW_TYPE_OPTIONS.find((o) => o.value === v)?.label || String(v))
-    .slice(0, 20); // avoid overflow
+    .map(
+      (v) => THROW_TYPE_OPTIONS.find((o) => o.value === v)?.label || String(v)
+    )
+    .slice(0, 20);
 
   return (
     <div className="px-4 pb-24">
@@ -88,10 +86,18 @@ export default function PlayScreen({
           <ArrowLeft />
         </button>
         <h1 className="text-2xl font-extrabold ml-2">Spiel</h1>
+
+        {/* Toggle button */}
+        <button
+          onClick={() => setUseBoardView((v) => !v)}
+          className="ml-auto px-3 py-2 text-sm rounded-lg bg-blue-800 hover:bg-blue-700"
+        >
+          {useBoardView ? "Zahlen-Eingabe" : "Board-Eingabe"}
+        </button>
       </div>
 
-      <div className="grid md:grid-cols-[220px,1fr] gap-4 mt-2">
-        {/* Left: players list */}
+      <div className="grid md:grid-cols-[220px,1fr] gap-6 mt-4">
+        {/* LEFT: Players */}
         <div className="space-y-2">
           {matchFromList?.players.map((pid) => (
             <div
@@ -108,39 +114,52 @@ export default function PlayScreen({
           ))}
         </div>
 
-        {/* Right: board + info */}
-        <div>
-          {/* Simple board representation: three rings S/D/T and Bulls */}
-          <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
-            {THROW_TYPE_OPTIONS.filter((o) => o.value <= 60).map((opt) => (
-              <button
-                key={opt.value}
-                className={`px-2 py-2 rounded-lg border text-sm hover:opacity-90 ${
-                  opt.value <= 20
-                    ? "bg-zinc-800 border-zinc-700"
-                    : opt.value <= 40
-                    ? "bg-red-900/50 border-red-700"
-                    : "bg-green-900/40 border-green-700"
-                }`}
-                onClick={() => throwOnce(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
-            {/* Bulls */}
-            {THROW_TYPE_OPTIONS.filter((o) => o.value > 60).map((opt) => (
-              <button
-                key={opt.value}
-                className="col-span-2 sm:col-span-5 px-3 py-3 rounded-lg bg-yellow-900/40 border border-yellow-700"
-                onClick={() => throwOnce(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+        {/* RIGHT: Board or Grid */}
+        <div className="space-y-6">
+          {useBoardView ? (
+            <div className="flex justify-center items-center">
+              {/* Dartboard placeholder */}
+              <div className="w-[320px] h-[320px] rounded-full border-8 border-zinc-700 bg-zinc-800 flex items-center justify-center text-zinc-400">
+                🎯 Dartboard (klickbare Felder später)
+              </div>
+            </div>
+          ) : (
+            <div
+              className="
+          grid gap-1
+          [grid-template-columns:repeat(auto-fit,minmax(1fr))]
+        "
+            >
+              {THROW_TYPE_OPTIONS.filter((o) => o.value <= 60).map((opt) => (
+                <button
+                  key={opt.value}
+                  className={`px-3 py-3 rounded-lg border text-base font-bold hover:opacity-90 ${
+                    opt.value <= 20
+                      ? "bg-zinc-800 border-zinc-600"
+                      : opt.value <= 40
+                      ? "bg-red-900/60 border-red-700"
+                      : "bg-green-900/50 border-green-700"
+                  }`}
+                  onClick={() => throwOnce(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              {/* Bulls */}
+              {THROW_TYPE_OPTIONS.filter((o) => o.value > 60).map((opt) => (
+                <button
+                  key={opt.value}
+                  className="col-span-2 sm:col-span-4 md:col-span-5 px-3 py-4 rounded-lg bg-yellow-900/60 border border-yellow-700 text-lg font-bold"
+                  onClick={() => throwOnce(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
 
-          {/* Turn boxes */}
-          <div className="mt-4 grid grid-cols-3 gap-3">
+          {/* Throws of this turn */}
+          <div className="grid grid-cols-3 gap-3">
             {[0, 1, 2].map((i) => {
               const val = turnThrows[i];
               const label = val
@@ -160,7 +179,7 @@ export default function PlayScreen({
 
           {/* Possible finish */}
           {finishLabels.length > 0 && (
-            <div className="mt-4">
+            <div>
               <div className="text-sm opacity-80 mb-2">Mögliche Finishes</div>
               <div className="flex flex-wrap gap-2">
                 {finishLabels.map((l, idx) => (
