@@ -3,6 +3,7 @@ import type { ApiClient } from "../../lib/api";
 import type { Match, Player } from "../../types";
 import { THROW_TYPE_OPTIONS } from "../../lib/utils";
 import { ArrowLeft } from "lucide-react";
+import Dartboard from "../common/Dartboard";
 
 export default function PlayScreen({
   api,
@@ -37,11 +38,16 @@ export default function PlayScreen({
   const [useBoardView, setUseBoardView] = useState(false); // <-- NEW toggle
 
   useEffect(() => {
-    if (matchFromList) {
-      setScores(matchFromList.scores || {});
+    if (!matchFromList) return;
+    // Always sync scores from the server
+    setScores(matchFromList.scores || {});
+
+    // If current player changed (e.g., turn passed), update and reset turn throws and finishes
+    if (currentPid !== matchFromList.currentPlayer) {
       setCurrentPid(matchFromList.currentPlayer);
+      setTurnThrows([]);
     }
-  }, [matchFromList?.id]);
+  }, [matchFromList?.currentPlayer, matchFromList?.scores, currentPid]);
 
   const throwOnce = async (tt: number) => {
     if (!currentPid) return;
@@ -59,13 +65,16 @@ export default function PlayScreen({
     setScores(resp.Scores || scores);
     setFinishes(resp.PossibleFinish || []);
 
-    if (resp.NextThrowBy !== currentPid) {
-      setTurnThrows([tt]);
+    const next = resp.NextThrowBy;
+    if (next !== currentPid) {
+      // Turn passed to next player: reset throw display
+      setTurnThrows([]);
     } else {
+      // Same player continues this turn: append this throw
       setTurnThrows((prev) => [...prev, tt].slice(-3));
     }
 
-    setCurrentPid(resp.NextThrowBy);
+    setCurrentPid(next);
     onRefreshMatches();
   };
 
@@ -73,7 +82,7 @@ export default function PlayScreen({
     .map(
       (v) => THROW_TYPE_OPTIONS.find((o) => o.value === v)?.label || String(v)
     )
-    .slice(0, 20);
+    .slice(0, 3);
 
   return (
     <div className="px-4 pb-24">
@@ -100,16 +109,32 @@ export default function PlayScreen({
         {/* LEFT: Players */}
         <div className="space-y-2">
           {matchFromList?.players.map((pid) => (
-            <div
-              key={pid}
-              className={`flex items-center justify-between rounded-xl px-3 py-2 border ${
-                pid === currentPid
-                  ? "bg-green-900/30 border-green-700"
-                  : "bg-zinc-900 border-zinc-800"
-              }`}
-            >
-              <div className="font-semibold truncate mr-3">{nameOf(pid)}</div>
-              <div className="text-xl font-extrabold">{scores?.[pid] ?? 0}</div>
+            <div key={pid}>
+              <div
+                className={`flex items-center justify-between rounded-xl px-3 py-2 border ${
+                  pid === currentPid
+                    ? "bg-green-900/30 border-green-700"
+                    : "bg-zinc-900 border-zinc-800"
+                }`}
+              >
+                <div className="font-semibold truncate mr-3">{nameOf(pid)}</div>
+                <div className="text-xl font-extrabold">{scores?.[pid] ?? 0}</div>
+              </div>
+              {pid === currentPid && finishLabels.length > 0 && (
+                <div className="mt-2 ml-2">
+                  <div className="text-xs opacity-80 mb-1">Mögliches Finish</div>
+                  <div className="flex flex-wrap gap-2">
+                    {finishLabels.map((l, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-1 rounded-full bg-emerald-900/30 border border-emerald-700 text-xs"
+                      >
+                        {l}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -118,10 +143,7 @@ export default function PlayScreen({
         <div className="space-y-6">
           {useBoardView ? (
             <div className="flex justify-center items-center">
-              {/* Dartboard placeholder */}
-              <div className="w-[320px] h-[320px] rounded-full border-8 border-zinc-700 bg-zinc-800 flex items-center justify-center text-zinc-400">
-                🎯 Dartboard (klickbare Felder später)
-              </div>
+              <Dartboard onPick={(tt) => throwOnce(tt)} />
             </div>
           ) : (
             <div
@@ -177,22 +199,6 @@ export default function PlayScreen({
             })}
           </div>
 
-          {/* Possible finish */}
-          {finishLabels.length > 0 && (
-            <div>
-              <div className="text-sm opacity-80 mb-2">Mögliche Finishes</div>
-              <div className="flex flex-wrap gap-2">
-                {finishLabels.map((l, idx) => (
-                  <span
-                    key={idx}
-                    className="px-2 py-1 rounded-full bg-emerald-900/30 border border-emerald-700 text-sm"
-                  >
-                    {l}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
