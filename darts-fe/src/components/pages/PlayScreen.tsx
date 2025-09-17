@@ -118,11 +118,15 @@ export default function PlayScreen({
                 }`}
               >
                 <div className="font-semibold truncate mr-3">{nameOf(pid)}</div>
-                <div className="text-xl font-extrabold">{scores?.[pid] ?? 0}</div>
+                <div className="text-xl font-extrabold">
+                  {scores?.[pid] ?? 0}
+                </div>
               </div>
               {pid === currentPid && finishLabels.length > 0 && (
                 <div className="mt-2 ml-2">
-                  <div className="text-xs opacity-80 mb-1">Mögliches Finish</div>
+                  <div className="text-xs opacity-80 mb-1">
+                    Mögliches Finish
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {finishLabels.map((l, idx) => (
                       <span
@@ -198,7 +202,6 @@ export default function PlayScreen({
               );
             })}
           </div>
-
         </div>
       </div>
     </div>

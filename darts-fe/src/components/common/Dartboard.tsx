@@ -1,5 +1,7 @@
 // Standard dartboard sector order starting at 20 on top and going clockwise
-const DART_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+const DART_ORDER = [
+  20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5
+];
 
 // Map ring + base number to backend ThrowType enum value
 function ttFrom(n: number, ring: "S" | "D" | "T"): number {
@@ -9,7 +11,14 @@ function ttFrom(n: number, ring: "S" | "D" | "T"): number {
 }
 
 // build a donut sector path from inner radius r1 to outer radius r2 between angles a0..a1 (deg)
-function donutSlice(cx: number, cy: number, r1: number, r2: number, a0: number, a1: number) {
+function donutSlice(
+  cx: number,
+  cy: number,
+  r1: number,
+  r2: number,
+  a0: number,
+  a1: number
+) {
   const toRad = (a: number) => (Math.PI / 180) * a;
   const x1o = cx + r2 * Math.cos(toRad(a0));
   const y1o = cy + r2 * Math.sin(toRad(a0));
@@ -23,9 +32,13 @@ function donutSlice(cx: number, cy: number, r1: number, r2: number, a0: number, 
   return `M ${x1o} ${y1o} A ${r2} ${r2} 0 ${large} 1 ${x2o} ${y2o} L ${x2i} ${y2i} A ${r1} ${r1} 0 ${large} 0 ${x1i} ${y1i} Z`;
 }
 
-export default function Dartboard({ onPick }: { onPick: (tt: number) => void }) {
+export default function Dartboard({
+  onPick
+}: {
+  onPick: (tt: number) => void;
+}) {
   // Larger geometry and responsive width; scales via viewBox
-  const size = 520; // bigger base size
+  const size = 600; // bigger base size
   const cx = size / 2;
   const cy = size / 2;
 
@@ -33,11 +46,11 @@ export default function Dartboard({ onPick }: { onPick: (tt: number) => void }) 
   const rBullInner = 22; // 50
   const rBullOuter = 42; // 25
   const rInnerSingleOuter = 160;
-  const rTripleInner = 172;
-  const rTripleOuter = 194;
-  const rOuterSingleOuter = 244;
-  const rDoubleInner = 256;
-  const rDoubleOuter = 266; // outermost playable ring
+  const rTripleInner = 160;
+  const rTripleOuter = 175;
+  const rOuterSingleOuter = 255;
+  const rDoubleInner = 255;
+  const rDoubleOuter = 270; // outermost playable ring
   const rNumbers = rDoubleOuter + 20; // where to draw numbers
 
   const sectorAngle = 360 / 20; // 18 degrees
@@ -50,7 +63,13 @@ export default function Dartboard({ onPick }: { onPick: (tt: number) => void }) 
       className="w-[360px] sm:w-[420px] md:w-[460px] h-auto drop-shadow-[0_0_8px_rgba(0,0,0,0.6)]"
     >
       {/* Backing circle */}
-      <circle cx={cx} cy={cy} r={rDoubleOuter + 8} className="fill-zinc-900 stroke-zinc-700" strokeWidth={8} />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={rDoubleOuter + 8}
+        className="fill-zinc-900 stroke-zinc-700"
+        strokeWidth={8}
+      />
 
       {/* 20 sectors with Singles/Doubles/Triples */}
       {DART_ORDER.map((num, idx) => {
@@ -63,10 +82,30 @@ export default function Dartboard({ onPick }: { onPick: (tt: number) => void }) 
         const doubleFill = "#c81e1e"; // red
 
         const paths = [
-          { r1: rBullOuter, r2: rInnerSingleOuter, fill: singleFill, ring: "S" as const }, // inner single
-          { r1: rTripleInner, r2: rTripleOuter, fill: tripleFill, ring: "T" as const }, // triple
-          { r1: rTripleOuter, r2: rOuterSingleOuter, fill: singleFill, ring: "S" as const }, // outer single
-          { r1: rDoubleInner, r2: rDoubleOuter, fill: doubleFill, ring: "D" as const }, // double
+          {
+            r1: rBullOuter,
+            r2: rInnerSingleOuter,
+            fill: singleFill,
+            ring: "S" as const
+          }, // inner single
+          {
+            r1: rTripleInner,
+            r2: rTripleOuter,
+            fill: tripleFill,
+            ring: "T" as const
+          }, // triple
+          {
+            r1: rTripleOuter,
+            r2: rOuterSingleOuter,
+            fill: singleFill,
+            ring: "S" as const
+          }, // outer single
+          {
+            r1: rDoubleInner,
+            r2: rDoubleOuter,
+            fill: doubleFill,
+            ring: "D" as const
+          } // double
         ];
 
         const mid = start + sectorAngle / 2;
