@@ -10,11 +10,11 @@ export interface Match {
   id: string;
   players: string[];
   currentThrow: number;
+  currentPlayer: string;
   startAt: number;
   startMode: number; 
   endMode: number;
   scores: Record<string, number>;
-  currentScore: number;
 }
 
 export interface ApiLog {

@@ -1,86 +1,180 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ApiClient } from "../../lib/api";
+import type { Match, Player } from "../../types";
+import { THROW_TYPE_OPTIONS } from "../../lib/utils";
+import { ArrowLeft } from "lucide-react";
 
-export default function PlayScreen() {
-  const { matchId } = useParams();
-  const [throws, setThrows] = useState(["", "", ""]);
-  const [players, setPlayers] = useState([
-    { id: "p1", name: "Lea", active: true, score: 301 },
-    { id: "p2", name: "Linus", active: false, score: 301 }
-  ]);
-  const [possibleFinish, setPossibleFinish] = useState<string | null>(null);
+export default function PlayScreen({
+  api,
+  players,
+  matches,
+  matchId,
+  onClose,
+  onRefreshMatches,
+}: {
+  api: ApiClient;
+  players: Player[];
+  matches: Match[];
+  matchId: string;
+  onClose: () => void;
+  onRefreshMatches: () => void;
+}) {
+  const matchFromList = useMemo(
+    () => matches.find((m) => m.id === matchId),
+    [matches, matchId]
+  );
 
-  async function submitThrows() {
-    const response = await fetch(`/playerThrow`, {
+  const nameOf = (id: string) => players.find((p) => p.id === id)?.name || id;
+
+  // Local mirror to react instantly after throws
+  const [scores, setScores] = useState<Record<string, number>>(
+    matchFromList?.scores || {}
+  );
+  const [currentPid, setCurrentPid] = useState<string | undefined>(
+    matchFromList?.currentPlayer
+  );
+  const [turnThrows, setTurnThrows] = useState<number[]>([]); // store ThrowType values for this turn (max 3)
+  const [finishes, setFinishes] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (matchFromList) {
+      setScores(matchFromList.scores || {});
+      setCurrentPid(matchFromList.currentPlayer);
+    }
+  }, [matchFromList?.id]);
+
+  const throwOnce = async (tt: number) => {
+    if (!currentPid) return;
+    const resp = await api.call<{
+      Won: boolean;
+      NotValid: boolean;
+      NextThrowBy: string;
+      Scores: Record<string, number>;
+      PossibleFinish: number[];
+    }>("/playerThrow", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ matchId, throws: throws.map(Number) })
+      body: JSON.stringify({ Mid: matchId, Pid: currentPid, Throw: tt }),
     });
 
-    const data = await response.json();
-    setPlayers(data.players);
-    setPossibleFinish(data.possibleFinish);
-  }
+    setScores(resp.Scores || scores);
+    setFinishes(resp.PossibleFinish || []);
+
+    // update turn throws; if next player changed, reset
+    if (resp.NextThrowBy !== currentPid) {
+      setTurnThrows([tt]);
+    } else {
+      setTurnThrows((prev) => {
+        return [...prev, tt].slice(-3);
+      });
+    }
+
+    setCurrentPid(resp.NextThrowBy);
+    // also refresh outer match list to keep consistent
+    onRefreshMatches();
+  };
+
+  const finishLabels = finishes
+    .map((v) => THROW_TYPE_OPTIONS.find((o) => o.value === v)?.label || String(v))
+    .slice(0, 20); // avoid overflow
 
   return (
-    <div className="flex min-h-screen">
-      {/* Left player list */}
-      <div className="w-1/4 bg-gray-900 text-white p-4">
-        <h2 className="text-xl font-bold mb-4">Spieler</h2>
-        <ul className="space-y-2">
-          {players.map((p) => (
-            <li
-              key={p.id}
-              className={`p-2 rounded-xl ${
-                p.active ? "bg-green-600 font-bold" : "bg-gray-700"
-              }`}
-            >
-              {p.name}: {p.score}
-            </li>
-          ))}
-        </ul>
-
-        {possibleFinish && (
-          <div className="mt-6 p-3 rounded-xl bg-yellow-600 text-black font-bold">
-            Möglicher Checkout: {possibleFinish}
-          </div>
-        )}
+    <div className="px-4 pb-24">
+      <div className="flex items-center gap-2 py-2">
+        <button
+          onClick={onClose}
+          className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700"
+          aria-label="Zurück"
+        >
+          <ArrowLeft />
+        </button>
+        <h1 className="text-2xl font-extrabold ml-2">Spiel</h1>
       </div>
 
-      {/* Right main game board */}
-      <div className="flex-1 p-6">
-        <h1 className="text-2xl font-bold mb-6">Match {matchId}</h1>
-
-        {/* 🎯 Dartboard placeholder */}
-        <div className="bg-gray-800 rounded-full aspect-square w-96 mx-auto mb-8 flex items-center justify-center text-gray-500">
-          Darts Board
-        </div>
-
-        {/* 🎯 Throw input */}
-        <div className="flex justify-center gap-4 mb-6">
-          {throws.map((t, i) => (
-            <input
-              key={i}
-              value={t}
-              onChange={(e) =>
-                setThrows((arr) => {
-                  const newArr = [...arr];
-                  newArr[i] = e.target.value;
-                  return newArr;
-                })
-              }
-              type="number"
-              className="w-20 text-center text-xl p-2 rounded-lg border border-gray-300"
-              placeholder="0"
-            />
+      <div className="grid md:grid-cols-[220px,1fr] gap-4 mt-2">
+        {/* Left: players list */}
+        <div className="space-y-2">
+          {matchFromList?.players.map((pid) => (
+            <div
+              key={pid}
+              className={`flex items-center justify-between rounded-xl px-3 py-2 border ${
+                pid === currentPid
+                  ? "bg-green-900/30 border-green-700"
+                  : "bg-zinc-900 border-zinc-800"
+              }`}
+            >
+              <div className="font-semibold truncate mr-3">{nameOf(pid)}</div>
+              <div className="text-xl font-extrabold">{scores?.[pid] ?? 0}</div>
+            </div>
           ))}
         </div>
 
-        <button
-          onClick={submitThrows}
-          className="block mx-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl"
-        >
-          Würfe speichern
-        </button>
+        {/* Right: board + info */}
+        <div>
+          {/* Simple board representation: three rings S/D/T and Bulls */}
+          <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+            {THROW_TYPE_OPTIONS.filter((o) => o.value <= 60).map((opt) => (
+              <button
+                key={opt.value}
+                className={`px-2 py-2 rounded-lg border text-sm hover:opacity-90 ${
+                  opt.value <= 20
+                    ? "bg-zinc-800 border-zinc-700"
+                    : opt.value <= 40
+                    ? "bg-red-900/50 border-red-700"
+                    : "bg-green-900/40 border-green-700"
+                }`}
+                onClick={() => throwOnce(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+            {/* Bulls */}
+            {THROW_TYPE_OPTIONS.filter((o) => o.value > 60).map((opt) => (
+              <button
+                key={opt.value}
+                className="col-span-2 sm:col-span-5 px-3 py-3 rounded-lg bg-yellow-900/40 border border-yellow-700"
+                onClick={() => throwOnce(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Turn boxes */}
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            {[0, 1, 2].map((i) => {
+              const val = turnThrows[i];
+              const label = val
+                ? THROW_TYPE_OPTIONS.find((o) => o.value === val)?.label
+                : "-";
+              return (
+                <div
+                  key={i}
+                  className="rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-3 text-center"
+                >
+                  <div className="text-sm opacity-80">Wurf {i + 1}</div>
+                  <div className="mt-1 font-extrabold">{label}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Possible finish */}
+          {finishLabels.length > 0 && (
+            <div className="mt-4">
+              <div className="text-sm opacity-80 mb-2">Mögliche Finishes</div>
+              <div className="flex flex-wrap gap-2">
+                {finishLabels.map((l, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2 py-1 rounded-full bg-emerald-900/30 border border-emerald-700 text-sm"
+                  >
+                    {l}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
