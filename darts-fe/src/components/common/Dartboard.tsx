@@ -43,8 +43,8 @@ export default function Dartboard({
   const cy = size / 2;
 
   // Radii (proportional)
-  const rBullInner = 22; // 50
-  const rBullOuter = 42; // 25
+  const rBullInner = 15; // 50
+  const rBullOuter = 30; // 25
   const rInnerSingleOuter = 160;
   const rTripleInner = 160;
   const rTripleOuter = 175;
@@ -73,14 +73,14 @@ export default function Dartboard({
 
       {/* 20 sectors with Singles/Doubles/Triples */}
       {DART_ORDER.map((num, idx) => {
-        const start = -90 + idx * sectorAngle;
+        const start = -100 + idx * sectorAngle;
         const end = start + sectorAngle;
 
         // Colors: beige singles; triples/doubles alternate red/green by sector
         const alternate = idx % 2 === 0; // alternate around the board
-          const singleFill = alternate ? "#1a1a1a" : "#e7e3c6"; // black/beige
-          const tripleFill = alternate ? "#c81e1e" : "#1f8a3a"; // red/green alternating
-          const doubleFill = alternate ? "#c81e1e" : "#1f8a3a"; // red/green alternating
+        const singleFill = alternate ? "#1a1a1a" : "#e7e3c6"; // black/beige
+        const tripleFill = alternate ? "#c81e1e" : "#1f8a3a"; // red/green alternating
+        const doubleFill = alternate ? "#c81e1e" : "#1f8a3a"; // red/green alternating
 
         const paths = [
           {
