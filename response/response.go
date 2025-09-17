@@ -7,7 +7,7 @@ import (
 
 // Builder is a builder for response models.
 type Builder interface {
-	BuildPlayerThrowResponse(match *models.Match, won bool) *playerthrow.Response
+	BuildPlayerThrowResponse(match *models.Match, won, notValid bool) *playerthrow.Response
 }
 
 // Impl implements the Builder interface.
@@ -19,11 +19,12 @@ func NewBuilder() Builder {
 }
 
 // BuildPlayerThrowResponse creates a playerthrow.Response from a given match and won flag.
-func (i Impl) BuildPlayerThrowResponse(match *models.Match, won bool) *playerthrow.Response {
+func (i Impl) BuildPlayerThrowResponse(match *models.Match, won, notValid bool) *playerthrow.Response {
 	return &playerthrow.Response{
 		Won:            won,
 		NextThrowBy:    match.CurrentPlayer,
 		Scores:         match.Scores,
+		NotValid:       notValid,
 		PossibleFinish: getPossibleFinishForMatchPlayer(match),
 	}
 }

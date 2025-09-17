@@ -131,15 +131,10 @@ func (s *Storage) CreateThrow(mid, pid string, throwType int) (*ThrowRecord, err
 	}
 	ctx := context.Background()
 	row := &throwRow{Mid: mid, Pid: pid, ThrowType: throwType}
-	res, err := s.Bun.NewInsert().Model(row).Exec(ctx)
-	if err != nil {
+	if err := s.Bun.NewInsert().Model(row).Returning("*").Scan(ctx); err != nil {
 		return nil, err
 	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-	return &ThrowRecord{ID: id, Mid: mid, Pid: pid, ThrowType: throwType}, nil
+	return &ThrowRecord{ID: row.ID, Mid: row.Mid, Pid: row.Pid, ThrowType: row.ThrowType}, nil
 }
 
 func (s *Storage) GetThrow(id int64) (*ThrowRecord, error) {

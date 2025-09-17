@@ -350,7 +350,7 @@ type matchRow struct {
 	bun.BaseModel `bun:"table:matches"`
 	ID            string  `bun:",pk"`
 	IsActive      bool    `bun:"isActive,notnull,default:true"`
-	StartAt       int     `bun:",notnull"`
+	StartAt       int     `bun:"startAt,notnull"`
 	Startmode     uint8   `bun:"startmode,notnull"`
 	Endmode       uint8   `bun:"endmode,notnull"`
 	CurrentPlayer string  `bun:"currentPlayer,nullzero"`

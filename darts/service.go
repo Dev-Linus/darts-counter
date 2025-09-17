@@ -56,7 +56,7 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 			// not a valid start, the turn is over, and it's the next players turn
 			updatedMatch := s.persistTurnOver(match, req.Throw)
 
-			return s.Response.BuildPlayerThrowResponse(updatedMatch, false), errors.New("no valid start throw")
+			return s.Response.BuildPlayerThrowResponse(updatedMatch, false, true), nil
 		}
 
 		updatedMatch, _, err := s.persistThrow(match, matchPlayerModel, &req.Throw)
@@ -64,14 +64,14 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 			return nil, err
 		}
 
-		return s.Response.BuildPlayerThrowResponse(updatedMatch, false), nil
+		return s.Response.BuildPlayerThrowResponse(updatedMatch, false, false), nil
 	}
 
 	if matchPlayerModel.Score-req.Throw.ToPoints() == 0 { // is OUT
 		if !isValidOut(models.MapNumberToIO(match.EndMode), matchPlayerModel.Score, req.Throw) {
 			// build not valid out response
 			updatedMatch := s.persistTurnOver(match, req.Throw)
-			return s.Response.BuildPlayerThrowResponse(updatedMatch, false), errors.New("no valid end throw")
+			return s.Response.BuildPlayerThrowResponse(updatedMatch, false, true), nil
 		}
 
 		// valid finish, the player has won the game
@@ -81,13 +81,13 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 		}
 		// add a win to the player stats
 
-		return s.Response.BuildPlayerThrowResponse(updatedMatch, true), nil
+		return s.Response.BuildPlayerThrowResponse(updatedMatch, true, false), nil
 	}
 
 	if isOverthrow(*match, matchPlayerModel.Score, req.Throw) {
 		updatedMatch := s.persistTurnOver(match, req.Throw)
 
-		return s.Response.BuildPlayerThrowResponse(updatedMatch, false), nil
+		return s.Response.BuildPlayerThrowResponse(updatedMatch, false, true), nil
 	}
 	// not IN not OUT not OVERTHROW => normal throw
 	// persist normal throw
@@ -97,7 +97,7 @@ func (s *Service) PlayerThrow(req *playerthrow.Request) (*playerthrow.Response, 
 		return nil, err
 	}
 
-	return s.Response.BuildPlayerThrowResponse(updatedMatch, false), nil
+	return s.Response.BuildPlayerThrowResponse(updatedMatch, false, false), nil
 }
 
 func isValidThrow(throw models.ThrowType) bool {

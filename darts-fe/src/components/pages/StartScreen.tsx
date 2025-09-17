@@ -33,16 +33,21 @@ export default function StartScreen({
       s.includes(id) ? s.filter((x) => x !== id) : [...s, id]
     );
   const startModeLabel = (m: 0 | 1 | 2) =>
-    m === 1 ? "Straight In" : m === 2 ? "Double In" : "Master In";
+    m === 0 ? "Straight In" : m === 1 ? "Double In" : "Master In";
   const endModeLabel = (m: 0 | 1 | 2) =>
-    m === 1 ? "Straight Out" : m === 2 ? "Double Out" : "Master Out";
+    m === 0 ? "Straight Out" : m === 1 ? "Double Out" : "Master Out";
 
   const create = async () => {
     const chosen = randomOrder ? shuffle([...selected]) : selected;
     if (chosen.length === 0) throw new Error("Bitte Spieler auswählen");
     await api.call<Match>("/createMatch", {
       method: "POST",
-      body: JSON.stringify({ Pids: chosen, StartAt: startAt, StartMode: startMode, EndMode: endMode })
+      body: JSON.stringify({
+        Pids: chosen,
+        StartAt: startAt,
+        StartMode: startMode,
+        EndMode: endMode
+      })
     });
     await matchesState.refresh();
   };

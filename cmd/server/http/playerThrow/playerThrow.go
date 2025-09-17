@@ -10,6 +10,7 @@ type Request struct {
 
 type Response struct {
 	Won            bool
+	NotValid       bool
 	NextThrowBy    string
 	Scores         map[string]int
 	PossibleFinish []models.ThrowType
