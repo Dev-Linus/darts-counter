@@ -24,20 +24,21 @@ function donutSlice(cx: number, cy: number, r1: number, r2: number, a0: number, 
 }
 
 export default function Dartboard({ onPick }: { onPick: (tt: number) => void }) {
-  // Geometry based on a 400x400 board; scales via viewBox
-  const size = 400;
+  // Larger geometry and responsive width; scales via viewBox
+  const size = 520; // bigger base size
   const cx = size / 2;
   const cy = size / 2;
 
-  // Radii (approximate but proportionally correct)
-  const rBullInner = 18;   // 50
-  const rBullOuter = 36;   // 25
-  const rInnerSingleOuter = 120; // up to before triple
-  const rTripleInner = 130;
-  const rTripleOuter = 145;
-  const rOuterSingleOuter = 185;
-  const rDoubleInner = 195;
-  const rDoubleOuter = 210;
+  // Radii (proportional)
+  const rBullInner = 22; // 50
+  const rBullOuter = 42; // 25
+  const rInnerSingleOuter = 160;
+  const rTripleInner = 172;
+  const rTripleOuter = 194;
+  const rOuterSingleOuter = 244;
+  const rDoubleInner = 256;
+  const rDoubleOuter = 266; // outermost playable ring
+  const rNumbers = rDoubleOuter + 20; // where to draw numbers
 
   const sectorAngle = 360 / 20; // 18 degrees
 
@@ -46,10 +47,10 @@ export default function Dartboard({ onPick }: { onPick: (tt: number) => void }) 
       role="img"
       aria-label="Dartboard"
       viewBox={`0 0 ${size} ${size}`}
-      className="max-w-full h-auto drop-shadow-[0_0_8px_rgba(0,0,0,0.6)]"
+      className="w-[360px] sm:w-[420px] md:w-[460px] h-auto drop-shadow-[0_0_8px_rgba(0,0,0,0.6)]"
     >
       {/* Backing circle */}
-      <circle cx={cx} cy={cy} r={rDoubleOuter + 6} className="fill-zinc-900 stroke-zinc-700" strokeWidth={6} />
+      <circle cx={cx} cy={cy} r={rDoubleOuter + 8} className="fill-zinc-900 stroke-zinc-700" strokeWidth={8} />
 
       {/* 20 sectors with Singles/Doubles/Triples */}
       {DART_ORDER.map((num, idx) => {
@@ -68,6 +69,11 @@ export default function Dartboard({ onPick }: { onPick: (tt: number) => void }) 
           { r1: rDoubleInner, r2: rDoubleOuter, fill: doubleFill, ring: "D" as const }, // double
         ];
 
+        const mid = start + sectorAngle / 2;
+        const rad = (Math.PI / 180) * mid;
+        const nx = cx + rNumbers * Math.cos(rad);
+        const ny = cy + rNumbers * Math.sin(rad);
+
         return (
           <g key={num}>
             {paths.map((p, i) => (
@@ -81,6 +87,19 @@ export default function Dartboard({ onPick }: { onPick: (tt: number) => void }) 
                 cursor="pointer"
               />
             ))}
+            {/* Rim number (not clickable) */}
+            <text
+              x={nx}
+              y={ny}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#ffffff"
+              fontSize={18}
+              fontWeight={700}
+              style={{ pointerEvents: "none" }}
+            >
+              {num}
+            </text>
           </g>
         );
       })}
