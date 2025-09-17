@@ -70,7 +70,7 @@ export default function MatchesScreen({
                 {m.players.map((pid) => (
                   <div
                     key={pid}
-                    className={`rounded-xl p-3 ${
+                    className={`relative rounded-xl p-3 ${
                       pid === m.currentPlayer
                         ? "bg-green-900/30 border border-green-700"
                         : "bg-zinc-800/60"
@@ -80,6 +80,28 @@ export default function MatchesScreen({
                     <div className="text-2xl font-extrabold">
                       {m.scores?.[pid] ?? 0}
                     </div>
+
+                    {pid === m.currentPlayer && (m.currentThrow ?? 0) > 0 && (
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        {Array.from({ length: Math.min(m.currentThrow, 2) }).map((_, i) => (
+                          <svg
+                            key={i}
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            className="text-green-400"
+                            aria-hidden
+                          >
+                            {/* Simple dart glyph */}
+                            <path d="M3 3 L7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                            <path d="M7 7 L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                            <path d="M12 12 L20 20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                            <rect x="18" y="18" width="3" height="3" fill="currentColor" />
+                          </svg>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
