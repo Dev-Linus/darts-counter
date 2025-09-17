@@ -89,7 +89,7 @@ export default function MatchesScreen({
                   onClick={() => setPlayMid(m.id)}
                   className="ml-auto px-3 py-2 rounded-xl bg-green-700 hover:bg-green-700/90"
                 >
-                  spielen
+                  start
                 </button>
               </div>
             </div>
