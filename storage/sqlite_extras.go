@@ -9,7 +9,7 @@ import (
 
 // Additional CRUD coverage for remaining tables and convenience helpers
 
-// ---------- PLAYER_STATS CRUD ----------
+// CreatePlayerStatsDefault
 func (s *Storage) CreatePlayerStatsDefault(pid string) (*models.PlayerStats, error) {
 	if pid == "" {
 		return nil, errors.New("empty pid")
@@ -68,7 +68,7 @@ func (s *Storage) DeletePlayerStats(pid string) error {
 	return err
 }
 
-// ---------- MATCH_PLAYER CRUD ----------
+// CreateMatchPlayer
 func (s *Storage) CreateMatchPlayer(mid, pid string, startAt int) (*models.MatchPlayer, error) {
 	if mid == "" || pid == "" {
 		return nil, errors.New("empty ids")
@@ -115,26 +115,42 @@ func (s *Storage) DeleteMatchPlayer(mid, pid string) error {
 	return err
 }
 
-// ---------- MATCH_PLAYER_THROWS CRUD ----------
 // ThrowRecord is a minimal model for match_player_throws table
-// We keep it local to storage to avoid changing public models if not needed.
 type ThrowRecord struct {
 	ID        int64
 	Mid       string
 	Pid       string
 	ThrowType int // use models.ThrowType values
+	EndedTurn bool
+	Turn      int
 }
 
-func (s *Storage) CreateThrow(mid, pid string, throwType int) (*ThrowRecord, error) {
-	if mid == "" || pid == "" {
+func (s *Storage) CreateThrow(tr ThrowRecord) (*ThrowRecord, error) {
+	if tr.Mid == "" || tr.Pid == "" {
 		return nil, errors.New("empty ids")
 	}
 	ctx := context.Background()
-	row := &throwRow{Mid: mid, Pid: pid, ThrowType: throwType}
+	count, err := s.countEndedTurns(ctx, tr.Mid, tr.Pid)
+	if err != nil {
+		return nil, err
+	}
+	tr.Turn = 1 + count
+
+	row := &throwRow{Mid: tr.Mid, Pid: tr.Pid, ThrowType: tr.ThrowType, EndedTurn: tr.EndedTurn, Turn: tr.Turn}
 	if err := s.Bun.NewInsert().Model(row).Returning("*").Scan(ctx); err != nil {
 		return nil, err
 	}
-	return &ThrowRecord{ID: row.ID, Mid: row.Mid, Pid: row.Pid, ThrowType: row.ThrowType}, nil
+	return &ThrowRecord{ID: row.ID, Mid: row.Mid, Pid: row.Pid, ThrowType: row.ThrowType, EndedTurn: row.EndedTurn, Turn: row.Turn}, nil
+}
+
+func (s *Storage) countEndedTurns(ctx context.Context, mid, pid string) (int, error) {
+	return s.Bun.
+		NewSelect().
+		Model((*throwRow)(nil)). // no allocation; just use the table
+		Where("mid = ?", mid).
+		Where("pid = ?", pid).
+		Where("endedTurn = ?", true). // or .Where("endedTurn = 1") for SQLite
+		Count(ctx)
 }
 
 func (s *Storage) GetThrow(id int64) (*ThrowRecord, error) {
@@ -143,20 +159,7 @@ func (s *Storage) GetThrow(id int64) (*ThrowRecord, error) {
 	if err := s.Bun.NewSelect().Model(&r).Where("id = ?", id).Scan(ctx); err != nil {
 		return nil, err
 	}
-	return &ThrowRecord{ID: r.ID, Mid: r.Mid, Pid: r.Pid, ThrowType: r.ThrowType}, nil
-}
-
-func (s *Storage) GetAllThrowsForMatchPlayer(mid, pid string) ([]*ThrowRecord, error) {
-	ctx := context.Background()
-	var rows []throwRow
-	if err := s.Bun.NewSelect().Model(&rows).Where("mid = ?", mid).Where("pid = ?", pid).Scan(ctx); err != nil {
-		return nil, err
-	}
-	out := make([]*ThrowRecord, 0, len(rows))
-	for _, r := range rows {
-		out = append(out, &ThrowRecord{ID: r.ID, Mid: r.Mid, Pid: r.Pid, ThrowType: r.ThrowType})
-	}
-	return out, nil
+	return &ThrowRecord{ID: r.ID, Mid: r.Mid, Pid: r.Pid, ThrowType: r.ThrowType, EndedTurn: r.EndedTurn, Turn: r.Turn}, nil
 }
 
 func (s *Storage) UpdateThrow(tr *ThrowRecord) (*ThrowRecord, error) {
@@ -168,6 +171,8 @@ func (s *Storage) UpdateThrow(tr *ThrowRecord) (*ThrowRecord, error) {
 		Set("mid = ?", tr.Mid).
 		Set("pid = ?", tr.Pid).
 		Set("throwType = ?", tr.ThrowType).
+		Set("endedTurn = ?", tr.EndedTurn).
+		Set("turn = ?", tr.Turn).
 		Where("id = ?", tr.ID).Exec(ctx)
 	if err != nil {
 		return nil, err
@@ -179,33 +184,4 @@ func (s *Storage) DeleteThrow(id int64) error {
 	ctx := context.Background()
 	_, err := s.Bun.NewDelete().TableExpr("match_player_throws").Where("id = ?", id).Exec(ctx)
 	return err
-}
-
-// -------- High-level helpers that accept Match and ThrowType models (CRD) --------
-// CreateMatchPlayerThrow creates a throw for the given match model, player id and typed throw.
-func (s *Storage) CreateMatchPlayerThrow(m *models.Match, pid string, tt models.ThrowType) (*ThrowRecord, error) {
-	if m == nil || m.ID == "" {
-		return nil, errors.New("invalid match model")
-	}
-	return s.CreateThrow(m.ID, pid, int(tt))
-}
-
-// GetMatchPlayerThrows returns all throws for the given match model and player id.
-func (s *Storage) GetMatchPlayerThrows(m *models.Match, pid string) ([]*ThrowRecord, error) {
-	if m == nil || m.ID == "" {
-		return nil, errors.New("invalid match model")
-	}
-	return s.GetAllThrowsForMatchPlayer(m.ID, pid)
-}
-
-// DeleteMatchPlayerThrow deletes a specific throw (by id) for the given match model.
-// The match is accepted to satisfy the API requirement; its ID is not strictly needed for deletion but helps validate context.
-func (s *Storage) DeleteMatchPlayerThrow(m *models.Match, throwID int64) error {
-	if m == nil || m.ID == "" {
-		return errors.New("invalid match model")
-	}
-	if throwID == 0 {
-		return errors.New("empty throw id")
-	}
-	return s.DeleteThrow(throwID)
 }

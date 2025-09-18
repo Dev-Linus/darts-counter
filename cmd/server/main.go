@@ -44,6 +44,7 @@ func main() {
 	mux.HandleFunc("/createMatch", api.CreateMatch)
 	mux.HandleFunc("/listMatches", api.ListMatches)
 	mux.HandleFunc("/deleteMatch", api.DeleteMatch)
+	mux.HandleFunc("/getMatch", api.GetMatch)
 
 	// gameplay
 	mux.HandleFunc("/playerThrow", api.PlayerThrow)

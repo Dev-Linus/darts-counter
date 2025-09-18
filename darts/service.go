@@ -147,7 +147,14 @@ func isOverthrow(match models.Match, score int, throw models.ThrowType) bool {
 }
 
 func (s *Service) persistTurnOver(match *models.Match, throw models.ThrowType) *models.Match {
-	if _, err := s.Store.CreateThrow(match.ID, match.CurrentPlayer, int(throw)); err != nil {
+	if _, err := s.Store.CreateThrow(
+		storage.ThrowRecord{
+			Mid:       match.ID,
+			Pid:       match.CurrentPlayer,
+			EndedTurn: true,
+			ThrowType: int(throw),
+		},
+	); err != nil {
 		return nil
 	}
 	match.CurrentPlayer = match.GetNextPlayer()
@@ -168,7 +175,16 @@ func (s *Service) persistThrow(match *models.Match, matchPlayerModel *models.Mat
 		match.CurrentPlayer = match.GetNextPlayer()
 	}
 
-	_, err := s.Store.CreateThrow(matchPlayerModel.Mid, matchPlayerModel.Pid, int(*throw))
+	// determine if this throw ends the turn: either player finished (score==0) or third throw just completed
+	turnEnded := matchPlayerModel.Score == 0 || match.CurrentThrow == 0
+	_, err := s.Store.CreateThrow(
+		storage.ThrowRecord{
+			Mid:       match.ID,
+			Pid:       match.CurrentPlayer,
+			EndedTurn: turnEnded,
+			ThrowType: int(*throw),
+		},
+	)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -191,4 +207,26 @@ func (s *Service) persistThrow(match *models.Match, matchPlayerModel *models.Mat
 	}
 
 	return match, matchPlayerModel, nil
+}
+
+// GetHistory returns per-player throw lists.
+// If active is true, it returns the last relevant throws since the last turnOver (max 3) for each player.
+// If active is false (match finished), it returns all historical throws for each player.
+func (s *Service) GetHistory(match *models.Match) (*models.History, error) {
+	if match == nil {
+		return nil, errors.New("match is nil")
+	}
+	active := match.WonBy == ""
+	var history *models.History
+	err := error(nil)
+	if active {
+		history, err = s.Store.GetLastTurnHistory(match)
+	} else {
+		history, err = s.Store.GetHistory(match)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return history, nil
 }

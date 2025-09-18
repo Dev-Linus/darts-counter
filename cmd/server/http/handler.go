@@ -14,6 +14,7 @@ import (
 
 	creatematch "darts-counter/cmd/server/http/createMatch"
 	createplayer "darts-counter/cmd/server/http/createPlayer"
+	getmatch "darts-counter/cmd/server/http/getMatch"
 	playerthrow "darts-counter/cmd/server/http/playerThrow"
 	updateplayer "darts-counter/cmd/server/http/updatePlayer"
 	darts "darts-counter/darts"
@@ -35,6 +36,7 @@ type Api interface {
 	CreateMatch(w http.ResponseWriter, r *http.Request)
 	ListMatches(w http.ResponseWriter, r *http.Request)
 	DeleteMatch(w http.ResponseWriter, r *http.Request)
+	GetMatch(w http.ResponseWriter, r *http.Request)
 	PlayerThrow(w http.ResponseWriter, r *http.Request)
 	Statistics(w http.ResponseWriter, r *http.Request)
 	StreamFile(w http.ResponseWriter, r *http.Request)
@@ -171,6 +173,33 @@ func (i *Impl) ListMatches(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(matches); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// GetMatch returns a match along with relevant throws per player (see docs).
+func (i *Impl) GetMatch(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("matchId")
+	if !validUUID(w, id) {
+		return
+	}
+	match, err := i.Store.GetMatch(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	throwsHistory, err := i.DartsService.GetHistory(match)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+	resp := getmatch.Response{
+		Match:   match,
+		History: throwsHistory,
+	}
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

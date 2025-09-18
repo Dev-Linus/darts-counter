@@ -216,6 +216,7 @@ func (s *Storage) GetMatch(id string) (*models.Match, error) {
 		Players:       []string{},
 		CurrentThrow:  uint32(mr.CurrentThrow),
 		CurrentPlayer: mr.CurrentPlayer,
+		WonBy:         *mr.WonBy,
 		StartAt:       mr.StartAt,
 		StartMode:     mr.Startmode,
 		EndMode:       mr.Endmode,
@@ -331,6 +332,74 @@ func (s *Storage) WonMatch(match *models.Match) error {
 	return nil
 }
 
+func (s *Storage) GetLastTurnHistory(match *models.Match) (*models.History, error) {
+	ctx := context.Background()
+	history := models.History{}
+
+	for _, pid := range match.Players {
+		var rows []throwRow
+
+		selectQuery := s.Bun.NewSelect().
+			Model((*throwRow)(nil)).
+			ColumnExpr("MAX(turn)").
+			Where("mid = ?", match.ID).
+			Where("pid = ?", pid)
+
+		err := s.Bun.NewSelect().
+			Model(&rows).
+			Where("mid = ?", match.ID).
+			Where("pid = ?", pid).
+			Where("turn = (?)", selectQuery).
+			Order("id DESC").
+			Scan(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		addHistoryItem(rows, history, pid)
+	}
+
+	return &history, nil
+}
+
+func (s *Storage) GetHistory(match *models.Match) (*models.History, error) {
+	ctx := context.Background()
+	history := models.History{}
+
+	for _, pid := range match.Players {
+		var rows []throwRow
+
+		err := s.Bun.NewSelect().
+			Model(&rows).
+			Where("mid = ?", match.ID).
+			Where("pid = ?", pid).
+			Order("id DESC").
+			Scan(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		addHistoryItem(rows, history, pid)
+	}
+
+	return &history, nil
+}
+
+func addHistoryItem(rows []throwRow, history models.History, pid string) {
+	historyItemList := make([]models.HistoryElement, 0, len(rows))
+	for _, row := range rows {
+		historyItem := models.HistoryElement{
+			Throw:      models.ThrowType(row.ThrowType),
+			EndedTurn:  row.EndedTurn,
+			TurnNumber: row.Turn,
+		}
+
+		historyItemList = append(historyItemList, historyItem)
+	}
+
+	history.History[pid] = historyItemList
+}
+
 // ---- Bun table models (internal) ----
 type playerRow struct {
 	bun.BaseModel `bun:"table:players"`
@@ -372,4 +441,6 @@ type throwRow struct {
 	Mid           string
 	Pid           string
 	ThrowType     int
+	Turn          int
+	EndedTurn     bool `bun:"endedTurn,notnull,default:false"`
 }
