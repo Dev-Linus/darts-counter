@@ -208,15 +208,23 @@ func (s *Storage) GetAllMatches() ([]*models.Match, error) {
 func (s *Storage) GetMatch(id string) (*models.Match, error) {
 	ctx := context.Background()
 	var mr matchRow
-	if err := s.Bun.NewSelect().Model(&mr).Column("id", "startAt", "startmode", "endmode", "currentThrow", "currentPlayer").Where("id = ?", id).Scan(ctx); err != nil {
+	if err := s.Bun.NewSelect().
+		Model(&mr).
+		Column("id", "startAt", "startmode", "endmode", "currentThrow", "currentPlayer", "wonBy", "isActive").
+		Where("id = ?", id).
+		Scan(ctx); err != nil {
 		return nil, err
+	}
+	var wonBy string
+	if mr.WonBy != nil {
+		wonBy = *mr.WonBy
 	}
 	m := &models.Match{
 		ID:            mr.ID,
 		Players:       []string{},
 		CurrentThrow:  uint32(mr.CurrentThrow),
 		CurrentPlayer: mr.CurrentPlayer,
-		WonBy:         *mr.WonBy,
+		WonBy:         wonBy,
 		StartAt:       mr.StartAt,
 		StartMode:     mr.Startmode,
 		EndMode:       mr.Endmode,
@@ -334,7 +342,9 @@ func (s *Storage) WonMatch(match *models.Match) error {
 
 func (s *Storage) GetLastTurnHistory(match *models.Match) (*models.History, error) {
 	ctx := context.Background()
-	history := models.History{}
+	history := models.History{
+		History: make(map[string][]models.HistoryElement, len(match.Players)),
+	}
 
 	for _, pid := range match.Players {
 		var rows []throwRow
@@ -350,7 +360,7 @@ func (s *Storage) GetLastTurnHistory(match *models.Match) (*models.History, erro
 			Where("mid = ?", match.ID).
 			Where("pid = ?", pid).
 			Where("turn = (?)", selectQuery).
-			Order("id DESC").
+			Order("id ASC").
 			Scan(ctx)
 		if err != nil {
 			return nil, err
@@ -364,7 +374,9 @@ func (s *Storage) GetLastTurnHistory(match *models.Match) (*models.History, erro
 
 func (s *Storage) GetHistory(match *models.Match) (*models.History, error) {
 	ctx := context.Background()
-	history := models.History{}
+	history := models.History{
+		History: make(map[string][]models.HistoryElement, len(match.Players)),
+	}
 
 	for _, pid := range match.Players {
 		var rows []throwRow
@@ -373,7 +385,7 @@ func (s *Storage) GetHistory(match *models.Match) (*models.History, error) {
 			Model(&rows).
 			Where("mid = ?", match.ID).
 			Where("pid = ?", pid).
-			Order("id DESC").
+			Order("id ASC").
 			Scan(ctx)
 		if err != nil {
 			return nil, err

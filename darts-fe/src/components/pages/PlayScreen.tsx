@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { ApiClient } from "../../lib/api";
-import type { Match, Player } from "../../types";
-import { THROW_TYPE_OPTIONS } from "../../lib/utils";
+import type { Match, MatchHistory, Player, HistoryElement } from "../../types";
+import { THROW_TYPE_OPTIONS, THROW_TYPE_RAW } from "../../lib/utils";
 import { ArrowLeft } from "lucide-react";
 import Dartboard from "../common/Dartboard";
 
 export default function PlayScreen({
   api,
   players,
-  matches,
   matchId,
   onClose,
   onRefreshMatches
@@ -20,37 +19,40 @@ export default function PlayScreen({
   onClose: () => void;
   onRefreshMatches: () => void;
 }) {
-  const matchFromList = useMemo(
-    () => matches.find((m) => m.id === matchId),
-    [matches, matchId]
-  );
+  const [matchHistory, setMatchHistory] = useState<MatchHistory | null>(null);
+  const [scores, setScores] = useState<Record<string, number>>({});
+  const [currentPid, setCurrentPid] = useState<string | undefined>();
+  const [turnThrows, setTurnThrows] = useState<number[]>([]);
+  const [finishes, setFinishes] = useState<number[]>([]);
+  const [useBoardView, setUseBoardView] = useState(false);
 
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name || id;
 
-  const [scores, setScores] = useState<Record<string, number>>(
-    matchFromList?.scores || {}
-  );
-  const [currentPid, setCurrentPid] = useState<string | undefined>(
-    matchFromList?.currentPlayer
-  );
-  const [turnThrows, setTurnThrows] = useState<number[]>([]);
-  const [finishes, setFinishes] = useState<number[]>([]);
-  const [useBoardView, setUseBoardView] = useState(false); // <-- NEW toggle
-
   useEffect(() => {
-    if (!matchFromList) return;
-    // Always sync scores from the server
-    setScores(matchFromList.scores || {});
-
-    // If current player changed (e.g., turn passed), update and reset turn throws and finishes
-    if (currentPid !== matchFromList.currentPlayer) {
-      setCurrentPid(matchFromList.currentPlayer);
-      setTurnThrows([]);
-    }
-  }, [matchFromList?.currentPlayer, matchFromList?.scores, currentPid]);
+    const loadMatchHistory = async () => {
+      const resp = await api.call<MatchHistory>(
+        `/getMatch?matchId=${matchId}`,
+        { method: "GET" }
+      );
+      setMatchHistory(resp);
+      setScores(resp.match.scores || {});
+      const cur = resp.match.currentPlayer;
+      setCurrentPid(cur);
+      // initialize current turn throws for the active player from history (last turn)
+      const hmap = resp.history?.history || {};
+      const curHist = hmap[cur] ? (hmap[cur] as any[]) : [];
+      const curTurn = curHist
+        .map((h: any) => h.throw)
+        .reverse()
+        .slice(0, 3);
+      setTurnThrows(curTurn);
+    };
+    if (matchId) loadMatchHistory();
+  }, [matchId]);
 
   const throwOnce = async (tt: number) => {
     if (!currentPid) return;
+
     const resp = await api.call<{
       Won: boolean;
       NotValid: boolean;
@@ -65,24 +67,30 @@ export default function PlayScreen({
     setScores(resp.Scores || scores);
     setFinishes(resp.PossibleFinish || []);
 
-    const next = resp.NextThrowBy;
-    if (next !== currentPid) {
-      // Turn passed to next player: reset throw display
+    if (resp.NextThrowBy !== currentPid) {
       setTurnThrows([]);
     } else {
-      // Same player continues this turn: append this throw
       setTurnThrows((prev) => [...prev, tt].slice(-3));
     }
 
-    setCurrentPid(next);
+    setCurrentPid(resp.NextThrowBy);
     onRefreshMatches();
+
+    // refresh match + history after every throw
+    const historyResp = await api.call<MatchHistory>(
+      `/getMatch?matchId=${matchId}`,
+      { method: "GET" }
+    );
+    setMatchHistory(historyResp);
   };
 
   const finishLabels = finishes
     .map(
-      (v) => THROW_TYPE_OPTIONS.find((o) => o.value === v)?.label || String(v)
+      (v) => THROW_TYPE_RAW.find((o) => o.value === v)?.label || String(v)
     )
     .slice(0, 3);
+
+  const currentMatch = matchHistory?.match;
 
   return (
     <div className="px-4 pb-24">
@@ -108,39 +116,105 @@ export default function PlayScreen({
       <div className="grid md:grid-cols-[220px,1fr] gap-6 mt-4">
         {/* LEFT: Players */}
         <div className="space-y-2">
-          {matchFromList?.players.map((pid) => (
-            <div key={pid}>
+          {currentMatch?.players.map((pid) => {
+            const throws = (matchHistory as any)?.history?.history?.[pid] ?? [];
+
+            return (
               <div
-                className={`flex items-center justify-between rounded-xl px-3 py-2 border ${
+                key={pid}
+                className={`rounded-xl px-3 py-2 border ${
                   pid === currentPid
                     ? "bg-green-900/30 border-green-700"
                     : "bg-zinc-900 border-zinc-800"
                 }`}
               >
-                <div className="font-semibold truncate mr-3">{nameOf(pid)}</div>
-                <div className="text-xl font-extrabold">
-                  {scores?.[pid] ?? 0}
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold truncate mr-3">
+                    {nameOf(pid)}
+                  </div>
+                  <div className="text-xl font-extrabold">
+                    {scores?.[pid] ?? 0}
+                  </div>
                 </div>
+
+                {/* Possible Finish for active player (inside the box) */}
+                {pid === currentPid && finishes.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-xs opacity-70 mb-1">
+                      Mögliches Finish
+                    </div>
+                    <div className="flex gap-1 flex-wrap">
+                      {finishLabels.map((label, i) => (
+                        <span
+                          key={i}
+                          className="px-2 py-1 rounded-lg bg-yellow-900/50 text-yellow-100 text-xs border border-yellow-700"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Throw history (slot grid 3xN) only for non-current players */}
+                {pid !== currentPid && throws.length > 0 && (
+                  <div className="mt-2">
+                    {Object.values(
+                      (throws as HistoryElement[]).reduce<
+                        Record<number, HistoryElement[]>
+                      >(
+                        (
+                          acc: Record<number, HistoryElement[]>,
+                          t: HistoryElement
+                        ) => {
+                          const tn = t.turn_number;
+                          if (!acc[tn]) acc[tn] = [];
+                          acc[tn].push(t);
+                          return acc;
+                        },
+                        {} as Record<number, HistoryElement[]>
+                      )
+                    )
+                      // latest turns first
+                      .sort(
+                        (a, b) =>
+                          (b[0]?.turn_number ?? 0) - (a[0]?.turn_number ?? 0)
+                      )
+                      .map((turn, ti) => {
+                        const cells = [turn[0], turn[1], turn[2]] as (
+                          | HistoryElement
+                          | undefined
+                        )[];
+                        return (
+                          <div key={ti} className="grid grid-cols-3 gap-1 mb-1">
+                            {cells.map((t, i) => {
+                              const isEmpty = !t;
+                              const rawLabel = t
+                                ? (THROW_TYPE_RAW.find((o) => o.value === t.throw)?.label ?? String(t.throw))
+                                : "\u00A0"; // non-breaking space to keep height without showing '-'
+                              const ended =
+                                !!t && (t as HistoryElement).ended_turn;
+                              return (
+                                <div
+                                  key={i}
+                                  className={`px-2 py-1 rounded-md text-xs text-center border font-bold ${
+                                    ended
+                                      ? "bg-red-900/60 border-red-700 text-red-100"
+                                      : "bg-zinc-800 border-zinc-700"
+                                  } ${isEmpty ? "opacity-40" : ""}`}
+                                >
+                                  {rawLabel}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
               </div>
-              {pid === currentPid && finishLabels.length > 0 && (
-                <div className="mt-2 ml-2">
-                  <div className="text-xs opacity-80 mb-1">
-                    Mögliches Finish
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {finishLabels.map((l, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-1 rounded-full bg-emerald-900/30 border border-emerald-700 text-xs"
-                      >
-                        {l}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* RIGHT: Board or Grid */}
@@ -188,16 +262,25 @@ export default function PlayScreen({
           <div className="grid grid-cols-3 gap-3">
             {[0, 1, 2].map((i) => {
               const val = turnThrows[i];
+              const isEmpty = !val;
               const label = val
-                ? THROW_TYPE_OPTIONS.find((o) => o.value === val)?.label
-                : "-";
+                ? THROW_TYPE_RAW.find((o) => o.value === val)?.label
+                : "\u00A0"; // keep height without showing '-'
               return (
                 <div
                   key={i}
-                  className="rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-3 text-center"
+                  className={`rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-3 text-center ${
+                    isEmpty ? "opacity-60" : ""
+                  }`}
                 >
                   <div className="text-sm opacity-80">Wurf {i + 1}</div>
-                  <div className="mt-1 font-extrabold">{label}</div>
+                  <div
+                    className={`mt-1 font-extrabold ${
+                      isEmpty ? "opacity-60" : ""
+                    }`}
+                  >
+                    {label}
+                  </div>
                 </div>
               );
             })}

@@ -167,20 +167,28 @@ func (s *Service) persistTurnOver(match *models.Match, throw models.ThrowType) *
 }
 
 func (s *Service) persistThrow(match *models.Match, matchPlayerModel *models.MatchPlayer, throw *models.ThrowType) (*models.Match, *models.MatchPlayer, error) {
-	match.Scores[match.CurrentPlayer] -= throw.ToPoints()
+	// Capture the throwing player's PID before mutating match state
+	throwingPid := match.CurrentPlayer
+
+	// Apply scoring to the throwing player
+	match.Scores[throwingPid] -= throw.ToPoints()
 	match.CurrentThrow = (match.CurrentThrow + 1) % 3
 	matchPlayerModel.OverallThrows++
-	matchPlayerModel.Score = match.Scores[match.CurrentPlayer]
+	matchPlayerModel.Score = match.Scores[throwingPid]
+
+	// Determine if this throw ends the turn: either player finished (score==0) or third throw just completed
+	turnEnded := matchPlayerModel.Score == 0 || match.CurrentThrow == 0
+
+	// Advance to next player only if the turn wrapped and the player did not finish
 	if match.CurrentThrow == 0 && matchPlayerModel.Score > 0 {
 		match.CurrentPlayer = match.GetNextPlayer()
 	}
 
-	// determine if this throw ends the turn: either player finished (score==0) or third throw just completed
-	turnEnded := matchPlayerModel.Score == 0 || match.CurrentThrow == 0
+	// Persist the throw for the correct (throwing) player
 	_, err := s.Store.CreateThrow(
 		storage.ThrowRecord{
 			Mid:       match.ID,
-			Pid:       match.CurrentPlayer,
+			Pid:       throwingPid,
 			EndedTurn: turnEnded,
 			ThrowType: int(*throw),
 		},
@@ -189,6 +197,7 @@ func (s *Service) persistThrow(match *models.Match, matchPlayerModel *models.Mat
 		return nil, nil, err
 	}
 
+	// If player finished, mark match as won; CurrentPlayer remains the finisher in this case
 	if matchPlayerModel.Score == 0 {
 		if err := s.Store.WonMatch(match); err != nil {
 			// Non-fatal: the response will still report a win; log for debugging
@@ -196,6 +205,7 @@ func (s *Service) persistThrow(match *models.Match, matchPlayerModel *models.Mat
 		}
 	}
 
+	// Persist updated match and player models
 	err = s.Store.UpdateMatch(match)
 	if err != nil {
 		return nil, nil, err
