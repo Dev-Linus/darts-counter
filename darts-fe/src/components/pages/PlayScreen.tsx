@@ -41,7 +41,10 @@ export default function PlayScreen({
       // initialize current turn throws for the active player from history (last turn)
       const hmap = resp.history?.history || {};
       const curHist = hmap[cur] ? (hmap[cur] as any[]) : [];
-      const curTurn = curHist.map((h: any) => h.throw).reverse().slice(0, 3);
+      const curTurn = curHist
+        .map((h: any) => h.throw)
+        .reverse()
+        .slice(0, 3);
       setTurnThrows(curTurn);
     };
     if (matchId) loadMatchHistory();
@@ -126,14 +129,20 @@ export default function PlayScreen({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className="font-semibold truncate mr-3">{nameOf(pid)}</div>
-                  <div className="text-xl font-extrabold">{scores?.[pid] ?? 0}</div>
+                  <div className="font-semibold truncate mr-3">
+                    {nameOf(pid)}
+                  </div>
+                  <div className="text-xl font-extrabold">
+                    {scores?.[pid] ?? 0}
+                  </div>
                 </div>
 
                 {/* Possible Finish for active player (inside the box) */}
                 {pid === currentPid && finishes.length > 0 && (
                   <div className="mt-2">
-                    <div className="text-xs opacity-70 mb-1">Mögliches Finish</div>
+                    <div className="text-xs opacity-70 mb-1">
+                      Mögliches Finish
+                    </div>
                     <div className="flex gap-1 flex-wrap">
                       {finishLabels.map((label, i) => (
                         <span
@@ -151,8 +160,13 @@ export default function PlayScreen({
                 {pid !== currentPid && throws.length > 0 && (
                   <div className="mt-2">
                     {Object.values(
-                      (throws as HistoryElement[]).reduce<Record<number, HistoryElement[]>>(
-                        (acc: Record<number, HistoryElement[]>, t: HistoryElement) => {
+                      (throws as HistoryElement[]).reduce<
+                        Record<number, HistoryElement[]>
+                      >(
+                        (
+                          acc: Record<number, HistoryElement[]>,
+                          t: HistoryElement
+                        ) => {
                           const tn = t.turn_number;
                           if (!acc[tn]) acc[tn] = [];
                           acc[tn].push(t);
@@ -162,9 +176,15 @@ export default function PlayScreen({
                       )
                     )
                       // latest turns first
-                      .sort((a, b) => (b[0]?.turn_number ?? 0) - (a[0]?.turn_number ?? 0))
+                      .sort(
+                        (a, b) =>
+                          (b[0]?.turn_number ?? 0) - (a[0]?.turn_number ?? 0)
+                      )
                       .map((turn, ti) => {
-                        const cells = [turn[0], turn[1], turn[2]] as (HistoryElement | undefined)[];
+                        const cells = [turn[0], turn[1], turn[2]] as (
+                          | HistoryElement
+                          | undefined
+                        )[];
                         return (
                           <div key={ti} className="grid grid-cols-3 gap-1 mb-1">
                             {cells.map((t, i) => {
@@ -172,11 +192,16 @@ export default function PlayScreen({
                               const rawLabel = t
                                 ? (THROW_TYPE_RAW.find((o) => o.value === t.throw)?.label ?? String(t.throw))
                                 : "\u00A0"; // non-breaking space to keep height without showing '-'
-                              const ended = !!t && (t as HistoryElement).ended_turn;
+                              const ended =
+                                !!t && (t as HistoryElement).ended_turn;
                               return (
                                 <div
                                   key={i}
-                                  className={`px-2 py-1 rounded-md text-xs text-center border font-bold ${ended ? "bg-red-900/60 border-red-700 text-red-100" : "bg-zinc-800 border-zinc-700"} ${isEmpty ? "opacity-40" : ""}`}
+                                  className={`px-2 py-1 rounded-md text-xs text-center border font-bold ${
+                                    ended
+                                      ? "bg-red-900/60 border-red-700 text-red-100"
+                                      : "bg-zinc-800 border-zinc-700"
+                                  } ${isEmpty ? "opacity-40" : ""}`}
                                 >
                                   {rawLabel}
                                 </div>
@@ -244,10 +269,18 @@ export default function PlayScreen({
               return (
                 <div
                   key={i}
-                  className={`rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-3 text-center ${isEmpty ? "opacity-60" : ""}`}
+                  className={`rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-3 text-center ${
+                    isEmpty ? "opacity-60" : ""
+                  }`}
                 >
                   <div className="text-sm opacity-80">Wurf {i + 1}</div>
-                  <div className={`mt-1 font-extrabold ${isEmpty ? "opacity-60" : ""}`}>{label}</div>
+                  <div
+                    className={`mt-1 font-extrabold ${
+                      isEmpty ? "opacity-60" : ""
+                    }`}
+                  >
+                    {label}
+                  </div>
                 </div>
               );
             })}
