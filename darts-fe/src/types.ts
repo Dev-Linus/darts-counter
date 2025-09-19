@@ -25,7 +25,8 @@ export interface HistoryElement {
 
 export interface MatchHistory {
   match: Match;
-  history: Record<string, HistoryElement[]>;
+  // Backend returns: { history: { [pid]: HistoryElement[] } }
+  history: { history: Record<string, HistoryElement[]> };
 }
 export interface ApiLog {
   time: string;

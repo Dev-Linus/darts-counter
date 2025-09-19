@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ApiClient } from "../../lib/api";
-import type { Match, MatchHistory, Player } from "../../types";
+import type { Match, MatchHistory, Player, HistoryElement } from "../../types";
 import { THROW_TYPE_OPTIONS } from "../../lib/utils";
 import { ArrowLeft } from "lucide-react";
 import Dartboard from "../common/Dartboard";
@@ -39,8 +39,8 @@ export default function PlayScreen({
       const cur = resp.match.currentPlayer;
       setCurrentPid(cur);
       // initialize current turn throws for the active player from history (last turn)
-      const hmap = resp.history as any;
-      const curHist = (hmap && hmap[cur]) ? (hmap[cur] as any[]) : [];
+      const hmap = resp.history?.history || {};
+      const curHist = hmap[cur] ? (hmap[cur] as any[]) : [];
       const curTurn = curHist.map((h: any) => h.throw).reverse().slice(0, 3);
       setTurnThrows(curTurn);
     };
@@ -114,7 +114,7 @@ export default function PlayScreen({
         {/* LEFT: Players */}
         <div className="space-y-2">
           {currentMatch?.players.map((pid) => {
-            const throws = matchHistory?.history?.[pid] ?? [];
+            const throws = (matchHistory as any)?.history?.history?.[pid] ?? [];
 
             return (
               <div
@@ -150,13 +150,16 @@ export default function PlayScreen({
                 {/* Throw history grouped by turn (inside the box) */}
                 {throws.length > 0 && (
                   <div className="flex flex-col gap-1 mt-2">
-                    {Object.values(
-                      throws.reduce((acc, t) => {
-                        const tn = t.turn_number;
-                        if (!acc[tn]) acc[tn] = [];
-                        acc[tn].push(t);
-                        return acc;
-                      }, {} as Record<number, typeof throws>)
+                     {Object.values(
+                      (throws as HistoryElement[]).reduce<Record<number, HistoryElement[]>>(
+                        (acc: Record<number, HistoryElement[]>, t: HistoryElement) => {
+                          const tn = t.turn_number;
+                          if (!acc[tn]) acc[tn] = [];
+                          acc[tn].push(t);
+                          return acc;
+                        },
+                        {} as Record<number, HistoryElement[]>
+                      )
                     ).map((turn, ti) => (
                       <div key={ti} className="flex gap-1 flex-wrap">
                         {turn.map((t, i) => {
