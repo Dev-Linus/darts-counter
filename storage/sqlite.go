@@ -374,7 +374,9 @@ func (s *Storage) GetLastTurnHistory(match *models.Match) (*models.History, erro
 
 func (s *Storage) GetHistory(match *models.Match) (*models.History, error) {
 	ctx := context.Background()
-	history := models.History{}
+	history := models.History{
+		History: make(map[string][]models.HistoryElement, len(match.Players)),
+	}
 
 	for _, pid := range match.Players {
 		var rows []throwRow
