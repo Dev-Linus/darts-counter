@@ -168,13 +168,14 @@ export default function PlayScreen({
                         return (
                           <div key={ti} className="grid grid-cols-3 gap-1 mb-1">
                             {cells.map((t, i) => {
+                              const isEmpty = !t;
                               const label = t
                                 ? (THROW_TYPE_OPTIONS.find((o) => o.value === t.throw)?.label ?? String(t.throw))
-                                : "-";
+                                : "\u00A0"; // non-breaking space to keep height without showing '-'
                               return (
                                 <div
                                   key={i}
-                                  className="px-2 py-1 rounded-md bg-zinc-800 text-xs border border-zinc-700 text-center"
+                                  className={`px-2 py-1 rounded-md bg-zinc-800 text-xs border border-zinc-700 text-center ${isEmpty ? "opacity-40" : ""}`}
                                 >
                                   {label}
                                 </div>
@@ -235,16 +236,17 @@ export default function PlayScreen({
           <div className="grid grid-cols-3 gap-3">
             {[0, 1, 2].map((i) => {
               const val = turnThrows[i];
+              const isEmpty = !val;
               const label = val
                 ? THROW_TYPE_OPTIONS.find((o) => o.value === val)?.label
-                : "-";
+                : "\u00A0"; // keep height without showing '-'
               return (
                 <div
                   key={i}
-                  className="rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-3 text-center"
+                  className={`rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-3 text-center ${isEmpty ? "opacity-60" : ""}`}
                 >
                   <div className="text-sm opacity-80">Wurf {i + 1}</div>
-                  <div className="mt-1 font-extrabold">{label}</div>
+                  <div className={`mt-1 font-extrabold ${isEmpty ? "opacity-60" : ""}`}>{label}</div>
                 </div>
               );
             })}
