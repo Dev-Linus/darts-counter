@@ -147,10 +147,10 @@ export default function PlayScreen({
                   </div>
                 )}
 
-                {/* Throw history grouped by turn (inside the box) */}
-                {throws.length > 0 && (
-                  <div className="flex flex-col gap-1 mt-2">
-                     {Object.values(
+                {/* Throw history (slot grid 3xN) only for non-current players */}
+                {pid !== currentPid && throws.length > 0 && (
+                  <div className="mt-2">
+                    {Object.values(
                       (throws as HistoryElement[]).reduce<Record<number, HistoryElement[]>>(
                         (acc: Record<number, HistoryElement[]>, t: HistoryElement) => {
                           const tn = t.turn_number;
@@ -160,22 +160,29 @@ export default function PlayScreen({
                         },
                         {} as Record<number, HistoryElement[]>
                       )
-                    ).map((turn, ti) => (
-                      <div key={ti} className="flex gap-1 flex-wrap">
-                        {turn.map((t, i) => {
-                          const label =
-                            THROW_TYPE_OPTIONS.find((o) => o.value === t.throw)?.label ?? String(t.throw);
-                          return (
-                            <span
-                              key={i}
-                              className="px-2 py-1 rounded-lg bg-zinc-800 text-xs border border-zinc-700"
-                            >
-                              {label}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    ))}
+                    )
+                      // latest turns first
+                      .sort((a, b) => (b[0]?.turn_number ?? 0) - (a[0]?.turn_number ?? 0))
+                      .map((turn, ti) => {
+                        const cells = [turn[0], turn[1], turn[2]] as (HistoryElement | undefined)[];
+                        return (
+                          <div key={ti} className="grid grid-cols-3 gap-1 mb-1">
+                            {cells.map((t, i) => {
+                              const label = t
+                                ? (THROW_TYPE_OPTIONS.find((o) => o.value === t.throw)?.label ?? String(t.throw))
+                                : "-";
+                              return (
+                                <div
+                                  key={i}
+                                  className="px-2 py-1 rounded-md bg-zinc-800 text-xs border border-zinc-700 text-center"
+                                >
+                                  {label}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
                   </div>
                 )}
               </div>
