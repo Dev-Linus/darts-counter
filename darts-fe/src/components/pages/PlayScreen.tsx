@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ApiClient } from "../../lib/api";
 import type { Match, MatchHistory, Player, HistoryElement } from "../../types";
-import { THROW_TYPE_OPTIONS } from "../../lib/utils";
+import { THROW_TYPE_OPTIONS, THROW_TYPE_RAW } from "../../lib/utils";
 import { ArrowLeft } from "lucide-react";
 import Dartboard from "../common/Dartboard";
 
@@ -83,7 +83,7 @@ export default function PlayScreen({
 
   const finishLabels = finishes
     .map(
-      (v) => THROW_TYPE_OPTIONS.find((o) => o.value === v)?.label || String(v)
+      (v) => THROW_TYPE_RAW.find((o) => o.value === v)?.label || String(v)
     )
     .slice(0, 3);
 
@@ -169,16 +169,16 @@ export default function PlayScreen({
                           <div key={ti} className="grid grid-cols-3 gap-1 mb-1">
                             {cells.map((t, i) => {
                               const isEmpty = !t;
-                              const label = t
-                                ? (THROW_TYPE_OPTIONS.find((o) => o.value === t.throw)?.label ?? String(t.throw))
+                              const rawLabel = t
+                                ? (THROW_TYPE_RAW.find((o) => o.value === t.throw)?.label ?? String(t.throw))
                                 : "\u00A0"; // non-breaking space to keep height without showing '-'
                               const ended = !!t && (t as HistoryElement).ended_turn;
                               return (
                                 <div
                                   key={i}
-                                  className={`px-2 py-1 rounded-md text-xs text-center border ${ended ? "bg-red-900/60 border-red-700 text-red-100" : "bg-zinc-800 border-zinc-700"} ${isEmpty ? "opacity-40" : ""}`}
+                                  className={`px-2 py-1 rounded-md text-xs text-center border font-bold ${ended ? "bg-red-900/60 border-red-700 text-red-100" : "bg-zinc-800 border-zinc-700"} ${isEmpty ? "opacity-40" : ""}`}
                                 >
-                                  {label}
+                                  {rawLabel}
                                 </div>
                               );
                             })}
@@ -239,7 +239,7 @@ export default function PlayScreen({
               const val = turnThrows[i];
               const isEmpty = !val;
               const label = val
-                ? THROW_TYPE_OPTIONS.find((o) => o.value === val)?.label
+                ? THROW_TYPE_RAW.find((o) => o.value === val)?.label
                 : "\u00A0"; // keep height without showing '-'
               return (
                 <div

@@ -42,3 +42,20 @@ export const THROW_TYPE_OPTIONS: ThrowTypeOption[] = (() => {
   // Order by usefulness (keep as pushed: S then D then T then Bulls) or could sort by points desc.
   return opts;
 })();
+
+// Raw-label variants (no point values), e.g., "T13"
+export const THROW_TYPE_RAW: ThrowTypeOption[] = (() => {
+  const opts: ThrowTypeOption[] = [];
+  for (let n = 1; n <= 20; n++) {
+    opts.push({ value: n, label: `S${n}` });
+  }
+  for (let n = 1; n <= 20; n++) {
+    opts.push({ value: 20 + n, label: `D${n}` });
+  }
+  for (let n = 1; n <= 20; n++) {
+    opts.push({ value: 40 + n, label: `T${n}` });
+  }
+  opts.push({ value: 61, label: "SBULL" });
+  opts.push({ value: 62, label: "BULL" });
+  return opts;
+})();
