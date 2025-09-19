@@ -172,10 +172,11 @@ export default function PlayScreen({
                               const label = t
                                 ? (THROW_TYPE_OPTIONS.find((o) => o.value === t.throw)?.label ?? String(t.throw))
                                 : "\u00A0"; // non-breaking space to keep height without showing '-'
+                              const ended = !!t && (t as HistoryElement).ended_turn;
                               return (
                                 <div
                                   key={i}
-                                  className={`px-2 py-1 rounded-md bg-zinc-800 text-xs border border-zinc-700 text-center ${isEmpty ? "opacity-40" : ""}`}
+                                  className={`px-2 py-1 rounded-md text-xs text-center border ${ended ? "bg-red-900/60 border-red-700 text-red-100" : "bg-zinc-800 border-zinc-700"} ${isEmpty ? "opacity-40" : ""}`}
                                 >
                                   {label}
                                 </div>
