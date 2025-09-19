@@ -360,7 +360,7 @@ func (s *Storage) GetLastTurnHistory(match *models.Match) (*models.History, erro
 			Where("mid = ?", match.ID).
 			Where("pid = ?", pid).
 			Where("turn = (?)", selectQuery).
-			Order("id DESC").
+			Order("id ASC").
 			Scan(ctx)
 		if err != nil {
 			return nil, err
@@ -383,7 +383,7 @@ func (s *Storage) GetHistory(match *models.Match) (*models.History, error) {
 			Model(&rows).
 			Where("mid = ?", match.ID).
 			Where("pid = ?", pid).
-			Order("id DESC").
+			Order("id ASC").
 			Scan(ctx)
 		if err != nil {
 			return nil, err
