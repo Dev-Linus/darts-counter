@@ -36,7 +36,13 @@ export default function PlayScreen({
       );
       setMatchHistory(resp);
       setScores(resp.match.scores || {});
-      setCurrentPid(resp.match.currentPlayer);
+      const cur = resp.match.currentPlayer;
+      setCurrentPid(cur);
+      // initialize current turn throws for the active player from history (last turn)
+      const hmap = resp.history as any;
+      const curHist = (hmap && hmap[cur]) ? (hmap[cur] as any[]) : [];
+      const curTurn = curHist.map((h: any) => h.throw).reverse().slice(0, 3);
+      setTurnThrows(curTurn);
     };
     if (matchId) loadMatchHistory();
   }, [matchId]);
@@ -111,37 +117,51 @@ export default function PlayScreen({
             const throws = matchHistory?.history?.[pid] ?? [];
 
             return (
-              <div key={pid} className="space-y-2">
-                <div
-                  className={`flex items-center justify-between rounded-xl px-3 py-2 border ${
-                    pid === currentPid
-                      ? "bg-green-900/30 border-green-700"
-                      : "bg-zinc-900 border-zinc-800"
-                  }`}
-                >
-                  <div className="font-semibold truncate mr-3">
-                    {nameOf(pid)}
-                  </div>
-                  <div className="text-xl font-extrabold">
-                    {scores?.[pid] ?? 0}
-                  </div>
+              <div
+                key={pid}
+                className={`rounded-xl px-3 py-2 border ${
+                  pid === currentPid
+                    ? "bg-green-900/30 border-green-700"
+                    : "bg-zinc-900 border-zinc-800"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold truncate mr-3">{nameOf(pid)}</div>
+                  <div className="text-xl font-extrabold">{scores?.[pid] ?? 0}</div>
                 </div>
 
-                {/* Throw history grouped by turn */}
+                {/* Possible Finish for active player (inside the box) */}
+                {pid === currentPid && finishes.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-xs opacity-70 mb-1">Mögliches Finish</div>
+                    <div className="flex gap-1 flex-wrap">
+                      {finishLabels.map((label, i) => (
+                        <span
+                          key={i}
+                          className="px-2 py-1 rounded-lg bg-yellow-900/50 text-yellow-100 text-xs border border-yellow-700"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Throw history grouped by turn (inside the box) */}
                 {throws.length > 0 && (
-                  <div className="flex flex-col gap-1 pl-1">
+                  <div className="flex flex-col gap-1 mt-2">
                     {Object.values(
                       throws.reduce((acc, t) => {
-                        if (!acc[t.turnNumber]) acc[t.turnNumber] = [];
-                        acc[t.turnNumber].push(t);
+                        const tn = t.turn_number;
+                        if (!acc[tn]) acc[tn] = [];
+                        acc[tn].push(t);
                         return acc;
                       }, {} as Record<number, typeof throws>)
                     ).map((turn, ti) => (
-                      <div key={ti} className="flex gap-1">
+                      <div key={ti} className="flex gap-1 flex-wrap">
                         {turn.map((t, i) => {
                           const label =
-                            THROW_TYPE_OPTIONS.find((o) => o.value === t.throw)
-                              ?.label ?? String(t.throw);
+                            THROW_TYPE_OPTIONS.find((o) => o.value === t.throw)?.label ?? String(t.throw);
                           return (
                             <span
                               key={i}

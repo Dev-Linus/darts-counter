@@ -19,8 +19,8 @@ export interface Match {
 
 export interface HistoryElement {
   throw: number;
-  endedTurn: boolean;
-  turnNumber: number;
+  ended_turn: boolean;
+  turn_number: number;
 }
 
 export interface MatchHistory {
