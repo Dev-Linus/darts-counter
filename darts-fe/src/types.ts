@@ -17,6 +17,16 @@ export interface Match {
   scores: Record<string, number>;
 }
 
+export interface HistoryElement {
+  throw: number;
+  endedTurn: boolean;
+  turnNumber: number;
+}
+
+export interface MatchHistory {
+  match: Match;
+  history: Record<string, HistoryElement[]>;
+}
 export interface ApiLog {
   time: string;
   request: { method: string; url: string; body?: any };

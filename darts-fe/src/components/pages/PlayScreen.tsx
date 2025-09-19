@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { ApiClient } from "../../lib/api";
-import type { Match, Player } from "../../types";
+import type { Match, MatchHistory, Player } from "../../types";
 import { THROW_TYPE_OPTIONS } from "../../lib/utils";
 import { ArrowLeft } from "lucide-react";
 import Dartboard from "../common/Dartboard";
@@ -8,7 +8,6 @@ import Dartboard from "../common/Dartboard";
 export default function PlayScreen({
   api,
   players,
-  matches,
   matchId,
   onClose,
   onRefreshMatches
@@ -20,37 +19,31 @@ export default function PlayScreen({
   onClose: () => void;
   onRefreshMatches: () => void;
 }) {
-  const matchFromList = useMemo(
-    () => matches.find((m) => m.id === matchId),
-    [matches, matchId]
-  );
+  const [matchHistory, setMatchHistory] = useState<MatchHistory | null>(null);
+  const [scores, setScores] = useState<Record<string, number>>({});
+  const [currentPid, setCurrentPid] = useState<string | undefined>();
+  const [turnThrows, setTurnThrows] = useState<number[]>([]);
+  const [finishes, setFinishes] = useState<number[]>([]);
+  const [useBoardView, setUseBoardView] = useState(false);
 
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name || id;
 
-  const [scores, setScores] = useState<Record<string, number>>(
-    matchFromList?.scores || {}
-  );
-  const [currentPid, setCurrentPid] = useState<string | undefined>(
-    matchFromList?.currentPlayer
-  );
-  const [turnThrows, setTurnThrows] = useState<number[]>([]);
-  const [finishes, setFinishes] = useState<number[]>([]);
-  const [useBoardView, setUseBoardView] = useState(false); // <-- NEW toggle
-
   useEffect(() => {
-    if (!matchFromList) return;
-    // Always sync scores from the server
-    setScores(matchFromList.scores || {});
-
-    // If current player changed (e.g., turn passed), update and reset turn throws and finishes
-    if (currentPid !== matchFromList.currentPlayer) {
-      setCurrentPid(matchFromList.currentPlayer);
-      setTurnThrows([]);
-    }
-  }, [matchFromList?.currentPlayer, matchFromList?.scores, currentPid]);
+    const loadMatchHistory = async () => {
+      const resp = await api.call<MatchHistory>(
+        `/getMatch?matchId=${matchId}`,
+        { method: "GET" }
+      );
+      setMatchHistory(resp);
+      setScores(resp.match.scores || {});
+      setCurrentPid(resp.match.currentPlayer);
+    };
+    if (matchId) loadMatchHistory();
+  }, [matchId]);
 
   const throwOnce = async (tt: number) => {
     if (!currentPid) return;
+
     const resp = await api.call<{
       Won: boolean;
       NotValid: boolean;
@@ -65,17 +58,21 @@ export default function PlayScreen({
     setScores(resp.Scores || scores);
     setFinishes(resp.PossibleFinish || []);
 
-    const next = resp.NextThrowBy;
-    if (next !== currentPid) {
-      // Turn passed to next player: reset throw display
+    if (resp.NextThrowBy !== currentPid) {
       setTurnThrows([]);
     } else {
-      // Same player continues this turn: append this throw
       setTurnThrows((prev) => [...prev, tt].slice(-3));
     }
 
-    setCurrentPid(next);
+    setCurrentPid(resp.NextThrowBy);
     onRefreshMatches();
+
+    // refresh match + history after every throw
+    const historyResp = await api.call<MatchHistory>(
+      `/getMatch?matchId=${matchId}`,
+      { method: "GET" }
+    );
+    setMatchHistory(historyResp);
   };
 
   const finishLabels = finishes
@@ -83,6 +80,8 @@ export default function PlayScreen({
       (v) => THROW_TYPE_OPTIONS.find((o) => o.value === v)?.label || String(v)
     )
     .slice(0, 3);
+
+  const currentMatch = matchHistory?.match;
 
   return (
     <div className="px-4 pb-24">
@@ -108,39 +107,57 @@ export default function PlayScreen({
       <div className="grid md:grid-cols-[220px,1fr] gap-6 mt-4">
         {/* LEFT: Players */}
         <div className="space-y-2">
-          {matchFromList?.players.map((pid) => (
-            <div key={pid}>
-              <div
-                className={`flex items-center justify-between rounded-xl px-3 py-2 border ${
-                  pid === currentPid
-                    ? "bg-green-900/30 border-green-700"
-                    : "bg-zinc-900 border-zinc-800"
-                }`}
-              >
-                <div className="font-semibold truncate mr-3">{nameOf(pid)}</div>
-                <div className="text-xl font-extrabold">
-                  {scores?.[pid] ?? 0}
-                </div>
-              </div>
-              {pid === currentPid && finishLabels.length > 0 && (
-                <div className="mt-2 ml-2">
-                  <div className="text-xs opacity-80 mb-1">
-                    Mögliches Finish
+          {currentMatch?.players.map((pid) => {
+            const throws = matchHistory?.history?.[pid] ?? [];
+
+            return (
+              <div key={pid} className="space-y-2">
+                <div
+                  className={`flex items-center justify-between rounded-xl px-3 py-2 border ${
+                    pid === currentPid
+                      ? "bg-green-900/30 border-green-700"
+                      : "bg-zinc-900 border-zinc-800"
+                  }`}
+                >
+                  <div className="font-semibold truncate mr-3">
+                    {nameOf(pid)}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {finishLabels.map((l, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-1 rounded-full bg-emerald-900/30 border border-emerald-700 text-xs"
-                      >
-                        {l}
-                      </span>
+                  <div className="text-xl font-extrabold">
+                    {scores?.[pid] ?? 0}
+                  </div>
+                </div>
+
+                {/* Throw history grouped by turn */}
+                {throws.length > 0 && (
+                  <div className="flex flex-col gap-1 pl-1">
+                    {Object.values(
+                      throws.reduce((acc, t) => {
+                        if (!acc[t.turnNumber]) acc[t.turnNumber] = [];
+                        acc[t.turnNumber].push(t);
+                        return acc;
+                      }, {} as Record<number, typeof throws>)
+                    ).map((turn, ti) => (
+                      <div key={ti} className="flex gap-1">
+                        {turn.map((t, i) => {
+                          const label =
+                            THROW_TYPE_OPTIONS.find((o) => o.value === t.throw)
+                              ?.label ?? String(t.throw);
+                          return (
+                            <span
+                              key={i}
+                              className="px-2 py-1 rounded-lg bg-zinc-800 text-xs border border-zinc-700"
+                            >
+                              {label}
+                            </span>
+                          );
+                        })}
+                      </div>
                     ))}
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* RIGHT: Board or Grid */}

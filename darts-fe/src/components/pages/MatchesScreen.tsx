@@ -83,7 +83,9 @@ export default function MatchesScreen({
 
                     {pid === m.currentPlayer && (m.currentThrow ?? 0) > 0 && (
                       <div className="absolute top-2 right-2 flex gap-1">
-                        {Array.from({ length: Math.min(m.currentThrow, 2) }).map((_, i) => (
+                        {Array.from({
+                          length: Math.min(m.currentThrow, 2)
+                        }).map((_, i) => (
                           <svg
                             key={i}
                             width="18"
@@ -94,10 +96,31 @@ export default function MatchesScreen({
                             aria-hidden
                           >
                             {/* Simple dart glyph */}
-                            <path d="M3 3 L7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                            <path d="M7 7 L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                            <path d="M12 12 L20 20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                            <rect x="18" y="18" width="3" height="3" fill="currentColor" />
+                            <path
+                              d="M3 3 L7 7"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                            />
+                            <path
+                              d="M7 7 L12 12"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                            />
+                            <path
+                              d="M12 12 L20 20"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                            />
+                            <rect
+                              x="18"
+                              y="18"
+                              width="3"
+                              height="3"
+                              fill="currentColor"
+                            />
                           </svg>
                         ))}
                       </div>
